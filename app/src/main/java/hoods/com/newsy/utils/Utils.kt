@@ -26,7 +26,7 @@ object Utils {
         Language("de", "German"),
         Language("es", "Spanish"),
         Language("fr", "French"),
-        Language("tr", "Turkish"),
+        Language("tr", "Turkish")
     )
 
     fun formatPublishedAtDate(publishedAt: String): String {
@@ -40,5 +40,4 @@ object Utils {
             "" // Handle parsing errors gracefully
         }
     }
-
 }

@@ -4,6 +4,7 @@ plugins {
     id("kotlinx-serialization")
     id("com.google.dagger.hilt.android")
     kotlin("kapt")
+    id("org.jlleitschuh.gradle.ktlint")
 }
 
 android {
@@ -51,7 +52,16 @@ android {
         }
     }
 }
-
+// Configure ktlint
+ktlint {
+    version.set("0.48.2") // Specify ktlint version (optional)
+    android.set(true) // Enable Android Kotlin style
+    verbose.set(true) // Enable verbose logging
+    outputToConsole.set(true) // Output results to console
+    ignoreFailures.set(false) // Fail the build on lint errors
+    enableExperimentalRules.set(true) // Enable experimental rules
+    disabledRules.set(setOf("no-wildcard-imports")) // Disable specific rules if needed
+}
 dependencies {
 
     implementation("androidx.core:core-ktx:1.9.0")
@@ -70,26 +80,21 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 
-    implementation ("com.google.android.material:material:1.9.0")
+    implementation("com.google.android.material:material:1.9.0")
 
-    //compose
+    // compose
     val navVersion = "2.7.2"
     implementation("androidx.navigation:navigation-compose:$navVersion")
-    implementation ("androidx.lifecycle:lifecycle-viewmodel-compose:2.6.2")
-    implementation ("androidx.compose.material:material-icons-extended:1.4.1")
-    implementation ("androidx.compose.ui:ui-util")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.6.2")
+    implementation("androidx.compose.material:material-icons-extended:1.4.1")
+    implementation("androidx.compose.ui:ui-util")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.6.2")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.6.2")
 
+    implementation("androidx.paging:paging-compose:3.2.1")
+    implementation("androidx.paging:paging-runtime-ktx:3.2.1")
 
-
-    //Paging3
-    val paging_version = "3.2.1"
-    implementation("androidx.paging:paging-compose:$paging_version")
-    implementation("androidx.paging:paging-runtime-ktx:$paging_version")
-
-
-    //Coil
+    // Coil
     implementation("io.coil-kt:coil-compose:2.1.0")
 
     // Network
@@ -97,12 +102,12 @@ dependencies {
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
     implementation("com.squareup.okhttp3:okhttp:4.9.0")
     implementation("com.squareup.okhttp3:logging-interceptor:4.9.0")
-    implementation ("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
 
     // dagger Hilt
     implementation("com.google.dagger:hilt-android:2.45")
     kapt("com.google.dagger:hilt-android-compiler:2.45")
-    implementation ("androidx.hilt:hilt-navigation-compose:1.0.0")
+    implementation("androidx.hilt:hilt-navigation-compose:1.0.0")
 
     val roomVersion = "2.5.2"
     implementation("androidx.room:room-runtime:$roomVersion")
@@ -110,10 +115,8 @@ dependencies {
     implementation("androidx.room:room-ktx:$roomVersion")
     implementation("androidx.room:room-paging:$roomVersion")
 
-    //splash
-    implementation ("androidx.core:core-splashscreen:1.0.1")
-
-
+    // splash
+    implementation("androidx.core:core-splashscreen:1.0.1")
 }
 // Allow references to generated code
 kapt {
