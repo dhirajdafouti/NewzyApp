@@ -3,7 +3,7 @@
 # Rule to be followed https://pinterest.github.io/ktlint/latest/rules/code-styles/
 # root = true
 #
-# [*]
+#[*]
 # indent_style = space
 # indent_size = 2
 # max_line_length = 140
@@ -42,3 +42,8 @@
 #
 # [*.yml]
 # ij_yaml_spaces_within_brackets = false
+
+# ktlint Documentation: https://github.com/pinterest/ktlint
+#  ktlint Gradle Plugin Documentation: https://github.com/JLLeitschuh/ktlint-gradle
+#  Android Lint Documentation: https://developer.android.com/studio/write/lint
+# EditorConfig Specification: https://editorconfig-specification.readthedocs.io/en/latest/
