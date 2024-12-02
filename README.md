@@ -1,2 +1,1 @@
- this is my first commit .
- aata will be available soon.
+This is the intial configuration branch
