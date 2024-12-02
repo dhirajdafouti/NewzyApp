@@ -1,2 +1,1 @@
- this is my first commit .
- aata will be available soon.
+The page will be updated soon
