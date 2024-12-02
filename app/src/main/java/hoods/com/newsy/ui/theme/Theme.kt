@@ -44,7 +44,7 @@ private val LightColors = lightColorScheme(
     inversePrimary = md_theme_light_inversePrimary,
     surfaceTint = md_theme_light_surfaceTint,
     outlineVariant = md_theme_light_outlineVariant,
-    scrim = md_theme_light_scrim
+    scrim = md_theme_light_scrim,
 )
 
 private val DarkColors = darkColorScheme(
@@ -76,7 +76,7 @@ private val DarkColors = darkColorScheme(
     inversePrimary = md_theme_dark_inversePrimary,
     surfaceTint = md_theme_dark_surfaceTint,
     outlineVariant = md_theme_dark_outlineVariant,
-    scrim = md_theme_dark_scrim
+    scrim = md_theme_dark_scrim,
 )
 
 @Composable
@@ -84,7 +84,7 @@ fun NewsyTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     // Dynamic color is available on Android 12+
     dynamicColor: Boolean = true,
-    content: @Composable () -> Unit
+    content: @Composable () -> Unit,
 ) {
     val colorScheme = when {
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
@@ -107,6 +107,6 @@ fun NewsyTheme(
     MaterialTheme(
         colorScheme = colorScheme,
         typography = Typography,
-        content = content
+        content = content,
     )
 }

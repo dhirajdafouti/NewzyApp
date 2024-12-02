@@ -18,7 +18,7 @@ object Utils {
         Country("br", "Brazil", R.drawable.ic_brazil),
         Country("tr", "Turkey", R.drawable.ic_turkey),
         Country("ua", "Ukraine", R.drawable.ic_ukraine),
-        Country("gb", "United Kingdom", R.drawable.ic_uk)
+        Country("gb", "United Kingdom", R.drawable.ic_uk),
     )
     val languageCodeList = listOf(
         Language("en", "English"),
@@ -26,7 +26,7 @@ object Utils {
         Language("de", "German"),
         Language("es", "Spanish"),
         Language("fr", "French"),
-        Language("tr", "Turkish")
+        Language("tr", "Turkish"),
     )
 
     fun formatPublishedAtDate(publishedAt: String): String {

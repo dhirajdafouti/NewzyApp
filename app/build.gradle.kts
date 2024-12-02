@@ -9,11 +9,12 @@ plugins {
 
 android {
     namespace = "hoods.com.newsy"
+    //noinspection GradleDependency
     compileSdk = 33
 
     defaultConfig {
         applicationId = "hoods.com.newsy"
-        minSdk = 24
+        minSdk = 21
         targetSdk = 33
         versionCode = 1
         versionName = "1.0"
@@ -29,8 +30,13 @@ android {
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
+                "proguard-rules.pro",
             )
+        }
+        debug {
+            isMinifyEnabled = false
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-debug"
         }
     }
     compileOptions {
@@ -42,6 +48,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig=true
     }
     composeOptions {
         kotlinCompilerExtensionVersion = "1.4.3"
@@ -49,6 +56,29 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        }
+    }
+buildTypes{
+    buildTypes {
+        getByName("debug") {
+            buildConfigField("String", "BASE_URL", "https://newsapi.org/v2/")
+        }
+        getByName("release") {
+            buildConfigField("String", "BASE_URL", "https://newsapi.org/v2/")
+        }
+    }
+}
+    flavorDimensions.add("serverEnv")
+    flavorDimensions.add("localEnv")
+
+    productFlavors {
+        create("server") {
+            dimension = "serverEnv"
+            buildConfigField("String", "BASE_URL", "https://newsapi.org/v2/")
+        }
+        create("local") {
+            dimension = "localEnv"
+            buildConfigField("String", "BASE_URL", "https://newsapi.org/v2/")
         }
     }
 }
@@ -103,10 +133,12 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp:4.9.0")
     implementation("com.squareup.okhttp3:logging-interceptor:4.9.0")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
+    implementation("com.squareup.retrofit2:converter-gson:2.9.0")
 
     // dagger Hilt
     implementation("com.google.dagger:hilt-android:2.45")
     kapt("com.google.dagger:hilt-android-compiler:2.45")
+
     implementation("androidx.hilt:hilt-navigation-compose:1.0.0")
 
     val roomVersion = "2.5.2"

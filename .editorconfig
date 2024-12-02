@@ -3,7 +3,7 @@
 # Rule to be followed https://pinterest.github.io/ktlint/latest/rules/code-styles/
 # root = true
 #
-# [*]
+#[*]
 # indent_style = space
 # indent_size = 2
 # max_line_length = 140
@@ -42,3 +42,23 @@
 #
 # [*.yml]
 # ij_yaml_spaces_within_brackets = false
+
+# ktlint Documentation: https://github.com/pinterest/ktlint
+#  ktlint Gradle Plugin Documentation: https://github.com/JLLeitschuh/ktlint-gradle
+#  Android Lint Documentation: https://developer.android.com/studio/write/lint
+# EditorConfig Specification: https://editorconfig-specification.readthedocs.io/en/latest/
+root = true
+
+[*.{kt,kts}]
+max_line_length = 120
+indent_size = 4
+insert_final_newline = true
+ij_kotlin_allow_trailing_comma = true
+ij_kotlin_allow_trailing_comma_on_call_site = true
+ktlint_function_naming_ignore_when_annotated_with = Composable
+ktlint_function_signature_rule_force_multiline_when_parameter_count_greater_or_equal_than = 1
+ktlint_standard_annotation = disabled
+ktlint_standard_property-naming = disabled
+ktlint_standard_max-line-length = disabled
+ktlint_standard_multiline-expression-wrapping = disabled
+ktlint_standard_string-template-indent = disabled
