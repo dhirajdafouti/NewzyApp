@@ -1,4 +1,4 @@
-package hoods.com.newsy.core.domain
+package hoods.com.newsy.core.domain.util
 
 enum class NetworkError: Error {
     REQUEST_TIMEOUT,

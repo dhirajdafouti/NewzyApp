@@ -11,7 +11,7 @@ import hoods.com.newsy.utils.ActivityLifecycleCallbacks
 open class NewzyApplication : Application(), ExceptionListener {
     private val activeActivityCallbacks = ActivityLifecycleCallbacks()
 
-    fun getCurrentActivity(): Activity? = activeActivityCallbacks.getCurrentActivity()
+    private fun getCurrentActivity(): Activity? = activeActivityCallbacks.getCurrentActivity()
 
     companion object {
         lateinit var instance: NewzyApplication
