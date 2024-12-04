@@ -14,7 +14,7 @@ android {
 
     defaultConfig {
         applicationId = "hoods.com.newsy"
-        minSdk = 21
+        minSdk = 24
         targetSdk = 33
         versionCode = 1
         versionName = "1.0"
@@ -23,6 +23,9 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
+    }
+    kotlinOptions {
+        jvmTarget = "11"
     }
 
     buildTypes {
@@ -40,12 +43,10 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
     }
-    kotlinOptions {
-        jvmTarget = "17"
-    }
+
     buildFeatures {
         compose = true
         buildConfig=true
@@ -82,16 +83,16 @@ buildTypes{
         }
     }
 }
-// Configure ktlint
-ktlint {
-    version.set("0.48.2") // Specify ktlint version (optional)
-    android.set(true) // Enable Android Kotlin style
-    verbose.set(true) // Enable verbose logging
-    outputToConsole.set(true) // Output results to console
-    ignoreFailures.set(false) // Fail the build on lint errors
-    enableExperimentalRules.set(true) // Enable experimental rules
-    disabledRules.set(setOf("no-wildcard-imports")) // Disable specific rules if needed
-}
+//// Configure ktlint
+//ktlint {
+//    version.set("0.48.2") // Specify ktlint version (optional)
+//    android.set(true) // Enable Android Kotlin style
+//    verbose.set(true) // Enable verbose logging
+//    outputToConsole.set(true) // Output results to console
+//    ignoreFailures.set(false) // Fail the build on lint errors
+//    enableExperimentalRules.set(true) // Enable experimental rules
+//    disabledRules.set(setOf("no-wildcard-imports")) // Disable specific rules if needed
+//}
 dependencies {
 
     implementation("androidx.core:core-ktx:1.9.0")
