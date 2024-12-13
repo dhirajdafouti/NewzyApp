@@ -1,0 +1,2254 @@
+Index: app/src/main/java/hoods/com/newsy/di/HeadlineModule.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/hoods/com/newsy/di/HeadlineModule.kt b/app/src/main/java/hoods/com/newsy/di/HeadlineModule.kt
+new file mode 100644
+--- /dev/null	(date 1696778678094)
++++ b/app/src/main/java/hoods/com/newsy/di/HeadlineModule.kt	(date 1696778678094)
+@@ -0,0 +1,99 @@
++package hoods.com.newsy.di
++
++import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
++import dagger.Module
++import dagger.Provides
++import dagger.hilt.InstallIn
++import dagger.hilt.components.SingletonComponent
++import hoods.com.newsy.features_components.core.data.local.NewsyArticleDatabase
++import hoods.com.newsy.features_components.core.data.remote.models.Article
++import hoods.com.newsy.features_components.core.domain.mapper.Mapper
++import hoods.com.newsy.features_components.core.domain.models.NewsyArticle
++import hoods.com.newsy.features_components.headline.data.local.dao.HeadlineDao
++import hoods.com.newsy.features_components.headline.data.local.dao.HeadlineRemoteKeyDao
++import hoods.com.newsy.features_components.headline.data.local.model.HeadlineDto
++import hoods.com.newsy.features_components.headline.data.mapper.ArticleHeadlineDtoMapper
++import hoods.com.newsy.features_components.headline.data.mapper.HeadlineMapper
++import hoods.com.newsy.features_components.headline.data.remote.HeadlineApi
++import hoods.com.newsy.features_components.headline.data.repository.HeadlineRepositoryImpl
++import hoods.com.newsy.features_components.headline.domain.repository.HeadlineRepository
++import hoods.com.newsy.features_components.headline.domain.use_cases.FetchHeadlineArticleUseCase
++import hoods.com.newsy.features_components.headline.domain.use_cases.HeadlineUseCases
++import hoods.com.newsy.features_components.headline.domain.use_cases.UpdateHeadlineFavouriteUseCase
++import hoods.com.newsy.utils.K
++import kotlinx.serialization.json.Json
++import okhttp3.MediaType.Companion.toMediaType
++import retrofit2.Retrofit
++import javax.inject.Singleton
++
++@Module
++@InstallIn(SingletonComponent::class)
++object HeadlineModule {
++    private val json = Json {
++        coerceInputValues = true
++        ignoreUnknownKeys = true
++    }
++
++    @Provides
++    @Singleton
++    fun provideHeadlineApi(): HeadlineApi {
++        val contentType = "application/json".toMediaType()
++        return Retrofit.Builder()
++            .baseUrl(K.BASE_URL)
++            .addConverterFactory(json.asConverterFactory(contentType))
++            .build()
++            .create(HeadlineApi::class.java)
++    }
++
++
++    @Provides
++    @Singleton
++    fun provideHeadlineRepository(
++        api: HeadlineApi,
++        database: NewsyArticleDatabase,
++        mapper: Mapper<HeadlineDto, NewsyArticle>,
++        articleHeadlineMapper: Mapper<Article, HeadlineDto>,
++    ): HeadlineRepository {
++        return HeadlineRepositoryImpl(
++            headlineApi = api,
++            database = database,
++            mapper = mapper,
++            articleHeadlineMapper = articleHeadlineMapper
++        )
++    }
++
++    @Provides
++    @Singleton
++    fun provideHeadlineDao(
++        database: NewsyArticleDatabase,
++    ): HeadlineDao = database.headlineDao()
++
++    @Provides
++    @Singleton
++    fun provideRemoteKeyDao(
++        database: NewsyArticleDatabase,
++    ): HeadlineRemoteKeyDao = database.headlineRemoteDao()
++
++    @Provides
++    @Singleton
++    fun provideHeadlineUseCases(
++        repository: HeadlineRepository,
++    ): HeadlineUseCases =
++        HeadlineUseCases(
++            fetchHeadlineArticleUseCase = FetchHeadlineArticleUseCase(
++                repository = repository
++            ),
++            updateHeadlineFavouriteUseCase = UpdateHeadlineFavouriteUseCase(
++                repository = repository
++            )
++        )
++
++    @Provides
++    @Singleton
++    fun provideArticleToHeadlineMapper(): Mapper<Article, HeadlineDto> = ArticleHeadlineDtoMapper()
++
++    @Provides
++    @Singleton
++    fun provideHeadlineMapper(): Mapper<HeadlineDto, NewsyArticle> = HeadlineMapper()
++
++}
+\ No newline at end of file
+Index: app/src/main/java/hoods/com/newsy/di/NewsyLocalModule.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/hoods/com/newsy/di/NewsyLocalModule.kt b/app/src/main/java/hoods/com/newsy/di/NewsyLocalModule.kt
+new file mode 100644
+--- /dev/null	(date 1696778678086)
++++ b/app/src/main/java/hoods/com/newsy/di/NewsyLocalModule.kt	(date 1696778678086)
+@@ -0,0 +1,30 @@
++package hoods.com.newsy.di
++
++import android.content.Context
++import androidx.room.Room
++import dagger.Module
++import dagger.Provides
++import dagger.hilt.InstallIn
++import dagger.hilt.android.qualifiers.ApplicationContext
++import dagger.hilt.components.SingletonComponent
++import hoods.com.newsy.features_components.core.data.local.NewsyArticleDatabase
++import javax.inject.Singleton
++
++@Module
++@InstallIn(SingletonComponent::class)
++object NewsyLocalModule {
++
++    @Singleton
++    @Provides
++    fun provideNewsyDatabase(
++        @ApplicationContext context: Context,
++    ): NewsyArticleDatabase {
++        return Room.databaseBuilder(
++            context,
++            NewsyArticleDatabase::class.java,
++            "newsy_db"
++        )
++            .build()
++    }
++
++}
+\ No newline at end of file
+Index: app/src/main/java/hoods/com/newsy/NewsyApplication.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/hoods/com/newsy/NewsyApplication.kt b/app/src/main/java/hoods/com/newsy/NewsyApplication.kt
+new file mode 100644
+--- /dev/null	(date 1696778678102)
++++ b/app/src/main/java/hoods/com/newsy/NewsyApplication.kt	(date 1696778678102)
+@@ -0,0 +1,7 @@
++package hoods.com.newsy
++
++import android.app.Application
++import dagger.hilt.android.HiltAndroidApp
++
++@HiltAndroidApp
++class NewsyApplication : Application()
+\ No newline at end of file
+Index: app/src/main/java/hoods/com/newsy/features_components/core/data/local/LocalContractDto.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/hoods/com/newsy/features_components/core/data/local/LocalContractDto.kt b/app/src/main/java/hoods/com/newsy/features_components/core/data/local/LocalContractDto.kt
+new file mode 100644
+--- /dev/null	(date 1696778678486)
++++ b/app/src/main/java/hoods/com/newsy/features_components/core/data/local/LocalContractDto.kt	(date 1696778678486)
+@@ -0,0 +1,16 @@
++package hoods.com.newsy.features_components.core.data.local
++
++abstract class LocalContractDto {
++    abstract val id: Int
++    abstract val author: String
++    abstract val content: String
++    abstract val description: String
++    abstract val publishedAt: String
++    abstract val source: String
++    abstract val title: String
++    abstract val url: String
++    abstract val urlToImage: String?
++    abstract val favourite: Boolean
++    abstract val category: String
++    abstract var page: Int
++}
+\ No newline at end of file
+Index: app/src/main/java/hoods/com/newsy/features_components/core/data/local/NewsyArticleDatabase.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/hoods/com/newsy/features_components/core/data/local/NewsyArticleDatabase.kt b/app/src/main/java/hoods/com/newsy/features_components/core/data/local/NewsyArticleDatabase.kt
+new file mode 100644
+--- /dev/null	(date 1696778678482)
++++ b/app/src/main/java/hoods/com/newsy/features_components/core/data/local/NewsyArticleDatabase.kt	(date 1696778678482)
+@@ -0,0 +1,21 @@
++package hoods.com.newsy.features_components.core.data.local
++
++import androidx.room.Database
++import androidx.room.RoomDatabase
++import hoods.com.newsy.features_components.headline.data.local.dao.HeadlineDao
++import hoods.com.newsy.features_components.headline.data.local.dao.HeadlineRemoteKeyDao
++import hoods.com.newsy.features_components.headline.data.local.model.HeadlineDto
++import hoods.com.newsy.features_components.headline.data.local.model.HeadlineRemoteKey
++
++@Database(
++    entities = [
++        HeadlineDto::class,
++        HeadlineRemoteKey::class
++    ],
++    exportSchema = false,
++    version = 1
++)
++abstract class NewsyArticleDatabase : RoomDatabase() {
++    abstract fun headlineDao(): HeadlineDao
++    abstract fun headlineRemoteDao(): HeadlineRemoteKeyDao
++}
+\ No newline at end of file
+Index: app/src/main/java/hoods/com/newsy/features_components/core/data/remote/models/Source.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/hoods/com/newsy/features_components/core/data/remote/models/Source.kt b/app/src/main/java/hoods/com/newsy/features_components/core/data/remote/models/Source.kt
+new file mode 100644
+--- /dev/null	(date 1696778678466)
++++ b/app/src/main/java/hoods/com/newsy/features_components/core/data/remote/models/Source.kt	(date 1696778678466)
+@@ -0,0 +1,13 @@
++package hoods.com.newsy.features_components.core.data.remote.models
++
++
++import kotlinx.serialization.SerialName
++import kotlinx.serialization.Serializable
++
++@Serializable
++data class Source(
++    @SerialName("id")
++    val id: String = "",
++    @SerialName("name")
++    val name: String = ""
++)
+\ No newline at end of file
+Index: app/src/main/java/hoods/com/newsy/features_components/core/data/remote/models/Article.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/hoods/com/newsy/features_components/core/data/remote/models/Article.kt b/app/src/main/java/hoods/com/newsy/features_components/core/data/remote/models/Article.kt
+new file mode 100644
+--- /dev/null	(date 1696778678450)
++++ b/app/src/main/java/hoods/com/newsy/features_components/core/data/remote/models/Article.kt	(date 1696778678450)
+@@ -0,0 +1,25 @@
++package hoods.com.newsy.features_components.core.data.remote.models
++
++
++import kotlinx.serialization.SerialName
++import kotlinx.serialization.Serializable
++
++@Serializable
++data class Article(
++    @SerialName("author")
++    val author: String = "",
++    @SerialName("content")
++    val content: String? = null,
++    @SerialName("description")
++    val description: String? = null,
++    @SerialName("publishedAt")
++    val publishedAt: String = "",
++    @SerialName("source")
++    val source: Source = Source(),
++    @SerialName("title")
++    val title: String = "",
++    @SerialName("url")
++    val url: String = "",
++    @SerialName("urlToImage")
++    val urlToImage: String? = null
++)
+\ No newline at end of file
+Index: app/src/main/java/hoods/com/newsy/features_components/core/data/remote/models/NewsyRemoteDto.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/hoods/com/newsy/features_components/core/data/remote/models/NewsyRemoteDto.kt b/app/src/main/java/hoods/com/newsy/features_components/core/data/remote/models/NewsyRemoteDto.kt
+new file mode 100644
+--- /dev/null	(date 1696778678442)
++++ b/app/src/main/java/hoods/com/newsy/features_components/core/data/remote/models/NewsyRemoteDto.kt	(date 1696778678442)
+@@ -0,0 +1,15 @@
++package hoods.com.newsy.features_components.core.data.remote.models
++
++
++import kotlinx.serialization.SerialName
++import kotlinx.serialization.Serializable
++
++@Serializable
++data class NewsyRemoteDto(
++    @SerialName("articles")
++    val articles: List<Article> = listOf(),
++    @SerialName("status")
++    val status: String = "",
++    @SerialName("totalResults")
++    val totalResults: Int = 0
++)
+\ No newline at end of file
+Index: app/src/main/java/hoods/com/newsy/features_components/core/domain/mapper/Mapper.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/hoods/com/newsy/features_components/core/domain/mapper/Mapper.kt b/app/src/main/java/hoods/com/newsy/features_components/core/domain/mapper/Mapper.kt
+new file mode 100644
+--- /dev/null	(date 1696778678418)
++++ b/app/src/main/java/hoods/com/newsy/features_components/core/domain/mapper/Mapper.kt	(date 1696778678418)
+@@ -0,0 +1,6 @@
++package hoods.com.newsy.features_components.core.domain.mapper
++
++interface Mapper<T:Any?,Model:Any> {
++    fun toModel(value:T):Model
++    fun fromModel(value:Model):T
++}
+\ No newline at end of file
+Index: app/src/main/java/hoods/com/newsy/features_components/core/domain/models/Country.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/hoods/com/newsy/features_components/core/domain/models/Country.kt b/app/src/main/java/hoods/com/newsy/features_components/core/domain/models/Country.kt
+new file mode 100644
+--- /dev/null	(date 1696778678406)
++++ b/app/src/main/java/hoods/com/newsy/features_components/core/domain/models/Country.kt	(date 1696778678406)
+@@ -0,0 +1,9 @@
++package hoods.com.newsy.features_components.core.domain.models
++
++import androidx.annotation.DrawableRes
++
++data class Country(
++    val code: String,
++    val name: String,
++    @DrawableRes val icResId: Int,
++)
+\ No newline at end of file
+Index: app/src/main/java/hoods/com/newsy/features_components/core/domain/models/Setting.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/hoods/com/newsy/features_components/core/domain/models/Setting.kt b/app/src/main/java/hoods/com/newsy/features_components/core/domain/models/Setting.kt
+new file mode 100644
+--- /dev/null	(date 1696778678398)
++++ b/app/src/main/java/hoods/com/newsy/features_components/core/domain/models/Setting.kt	(date 1696778678398)
+@@ -0,0 +1,6 @@
++package hoods.com.newsy.features_components.core.domain.models
++
++data class Setting(
++    val preferredCountryIndex: Int,
++    val preferredLanguageIndex: Int,
++)
+Index: app/src/main/java/hoods/com/newsy/features_components/core/domain/models/Language.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/hoods/com/newsy/features_components/core/domain/models/Language.kt b/app/src/main/java/hoods/com/newsy/features_components/core/domain/models/Language.kt
+new file mode 100644
+--- /dev/null	(date 1696778678386)
++++ b/app/src/main/java/hoods/com/newsy/features_components/core/domain/models/Language.kt	(date 1696778678386)
+@@ -0,0 +1,3 @@
++package hoods.com.newsy.features_components.core.domain.models
++
++data class Language(val code: String, val name: String)
+Index: app/src/main/java/hoods/com/newsy/features_components/core/domain/models/NewsyArticle.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/hoods/com/newsy/features_components/core/domain/models/NewsyArticle.kt b/app/src/main/java/hoods/com/newsy/features_components/core/domain/models/NewsyArticle.kt
+new file mode 100644
+--- /dev/null	(date 1696778678378)
++++ b/app/src/main/java/hoods/com/newsy/features_components/core/domain/models/NewsyArticle.kt	(date 1696778678378)
+@@ -0,0 +1,16 @@
++package hoods.com.newsy.features_components.core.domain.models
++
++data class NewsyArticle(
++    override val id: Int,
++    override val author: String,
++    override val content: String,
++    override val description: String,
++    override val publishedAt: String,
++    override val source: String,
++    override val title: String,
++    override val url: String,
++    override val urlToImage: String?,
++    override val favourite: Boolean = false,
++    override val category: String,
++    override var page: Int
++):DomainContract()
+\ No newline at end of file
+Index: app/src/main/java/hoods/com/newsy/features_components/core/domain/models/DomainContract.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/hoods/com/newsy/features_components/core/domain/models/DomainContract.kt b/app/src/main/java/hoods/com/newsy/features_components/core/domain/models/DomainContract.kt
+new file mode 100644
+--- /dev/null	(date 1696778678370)
++++ b/app/src/main/java/hoods/com/newsy/features_components/core/domain/models/DomainContract.kt	(date 1696778678370)
+@@ -0,0 +1,16 @@
++package hoods.com.newsy.features_components.core.domain.models
++
++abstract  class DomainContract {
++    abstract val id:Int
++    abstract val author:String
++    abstract val content: String
++    abstract val description: String
++    abstract val publishedAt: String
++    abstract val source: String
++    abstract val title: String
++    abstract val url: String
++    abstract val urlToImage: String?
++    abstract val favourite: Boolean
++    abstract val category: String
++    abstract var page: Int
++}
+\ No newline at end of file
+Index: app/src/main/java/hoods/com/newsy/features_components/headline/data/local/dao/HeadlineDao.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/hoods/com/newsy/features_components/headline/data/local/dao/HeadlineDao.kt b/app/src/main/java/hoods/com/newsy/features_components/headline/data/local/dao/HeadlineDao.kt
+new file mode 100644
+--- /dev/null	(date 1696778678342)
++++ b/app/src/main/java/hoods/com/newsy/features_components/headline/data/local/dao/HeadlineDao.kt	(date 1696778678342)
+@@ -0,0 +1,43 @@
++package hoods.com.newsy.features_components.headline.data.local.dao
++
++import androidx.paging.PagingSource
++import androidx.room.Dao
++import androidx.room.Delete
++import androidx.room.Insert
++import androidx.room.OnConflictStrategy
++import androidx.room.Query
++import hoods.com.newsy.features_components.headline.data.local.model.HeadlineDto
++import kotlinx.coroutines.flow.Flow
++
++@Dao
++interface HeadlineDao {
++    @Query("SELECT * FROM headline_table")
++    fun getAllHeadlineArticles(): PagingSource<Int, HeadlineDto>
++
++    @Query("SELECT * FROM headline_table WHERE id=:id")
++    fun getHeadlineArticle(id: Int): Flow<HeadlineDto>
++
++    @Insert(onConflict = OnConflictStrategy.REPLACE)
++    suspend fun insertHeadlineArticle(articles: List<HeadlineDto>)
++
++    @Query(
++        "DELETE FROM headline_table WHERE favourite=0"
++    )
++    suspend fun removeAllHeadlineArticles()
++
++    @Delete
++    suspend fun removeFavouriteArticle(headlineDto: HeadlineDto)
++
++    @Query(
++        "UPDATE headline_table SET favourite =:isFavourite WHERE id=:id"
++    )
++    suspend fun updateFavouriteArticle(isFavourite: Boolean, id: Int)
++
++}
++
++
++
++
++
++
++
+Index: app/src/main/java/hoods/com/newsy/features_components/headline/data/local/dao/HeadlineRemoteKeyDao.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/hoods/com/newsy/features_components/headline/data/local/dao/HeadlineRemoteKeyDao.kt b/app/src/main/java/hoods/com/newsy/features_components/headline/data/local/dao/HeadlineRemoteKeyDao.kt
+new file mode 100644
+--- /dev/null	(date 1696778678334)
++++ b/app/src/main/java/hoods/com/newsy/features_components/headline/data/local/dao/HeadlineRemoteKeyDao.kt	(date 1696778678334)
+@@ -0,0 +1,31 @@
++package hoods.com.newsy.features_components.headline.data.local.dao
++
++import androidx.room.Dao
++import androidx.room.Insert
++import androidx.room.OnConflictStrategy
++import androidx.room.Query
++import hoods.com.newsy.features_components.headline.data.local.model.HeadlineRemoteKey
++
++@Dao
++interface HeadlineRemoteKeyDao {
++    @Insert(onConflict = OnConflictStrategy.REPLACE)
++    suspend fun insertAll(remoteKey: List<HeadlineRemoteKey>)
++
++    @Query("SELECT * FROM headline_key WHERE article_id =:id")
++    suspend fun getRemoteKeyByArticleId(id: String): HeadlineRemoteKey?
++
++    @Query("DELETE FROM headline_key")
++    suspend fun clearRemoteKeys()
++
++    @Query("SELECT created_at FROM headline_key ORDER BY created_at DESC LIMIT 1")
++    suspend fun getCreationTime(): Long?
++
++}
++
++
++
++
++
++
++
++
+Index: app/src/main/java/hoods/com/newsy/features_components/headline/data/local/model/HeadlineDto.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/hoods/com/newsy/features_components/headline/data/local/model/HeadlineDto.kt b/app/src/main/java/hoods/com/newsy/features_components/headline/data/local/model/HeadlineDto.kt
+new file mode 100644
+--- /dev/null	(date 1696778678318)
++++ b/app/src/main/java/hoods/com/newsy/features_components/headline/data/local/model/HeadlineDto.kt	(date 1696778678318)
+@@ -0,0 +1,26 @@
++package hoods.com.newsy.features_components.headline.data.local.model
++
++import androidx.room.ColumnInfo
++import androidx.room.Entity
++import androidx.room.PrimaryKey
++import hoods.com.newsy.features_components.core.data.local.LocalContractDto
++
++@Entity(tableName = "headline_table")
++data class HeadlineDto(
++    @PrimaryKey(autoGenerate = true)
++    override val id: Int = 0,
++    override val author: String,
++    override val content: String,
++    override val description: String,
++    @ColumnInfo("published_at")
++    override val publishedAt: String,
++    override val source: String,
++    override val title: String,
++    override val url: String,
++    @ColumnInfo("url_to_image")
++    override val urlToImage: String?,
++    override val favourite: Boolean = false,
++    override val category: String,
++    override var page: Int,
++
++    ) : LocalContractDto()
+Index: app/src/main/java/hoods/com/newsy/features_components/headline/data/local/model/HeadlineRemoteKey.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/hoods/com/newsy/features_components/headline/data/local/model/HeadlineRemoteKey.kt b/app/src/main/java/hoods/com/newsy/features_components/headline/data/local/model/HeadlineRemoteKey.kt
+new file mode 100644
+--- /dev/null	(date 1696778678310)
++++ b/app/src/main/java/hoods/com/newsy/features_components/headline/data/local/model/HeadlineRemoteKey.kt	(date 1696778678310)
+@@ -0,0 +1,17 @@
++package hoods.com.newsy.features_components.headline.data.local.model
++
++import androidx.room.ColumnInfo
++import androidx.room.Entity
++import androidx.room.PrimaryKey
++
++@Entity("headline_key")
++data class HeadlineRemoteKey(
++    @PrimaryKey(autoGenerate = false)
++    @ColumnInfo(name = "article_id")
++    val articleId: String,
++    val prevKey: Int?,
++    val currentPage: Int?,
++    val nextKey: Int?,
++    @ColumnInfo(name = "created_at")
++    val createdAt: Long = System.currentTimeMillis(),
++)
+\ No newline at end of file
+Index: app/src/main/java/hoods/com/newsy/features_components/headline/data/mapper/HeadlineMapper.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/hoods/com/newsy/features_components/headline/data/mapper/HeadlineMapper.kt b/app/src/main/java/hoods/com/newsy/features_components/headline/data/mapper/HeadlineMapper.kt
+new file mode 100644
+--- /dev/null	(date 1696778678266)
++++ b/app/src/main/java/hoods/com/newsy/features_components/headline/data/mapper/HeadlineMapper.kt	(date 1696778678266)
+@@ -0,0 +1,45 @@
++package hoods.com.newsy.features_components.headline.data.mapper
++
++import hoods.com.newsy.features_components.core.domain.mapper.Mapper
++import hoods.com.newsy.features_components.core.domain.models.NewsyArticle
++import hoods.com.newsy.features_components.headline.data.local.model.HeadlineDto
++
++class HeadlineMapper:Mapper<HeadlineDto,NewsyArticle> {
++    override fun toModel(value: HeadlineDto): NewsyArticle {
++        return value.run {
++            NewsyArticle(
++                id = id,
++                author = author,
++                content = content,
++                description = description,
++                publishedAt = publishedAt,
++                source = source,
++                title = title,
++                url = url,
++                urlToImage = urlToImage,
++                favourite = favourite,
++                category = category,
++                page = page
++            )
++        }
++    }
++
++    override fun fromModel(value: NewsyArticle): HeadlineDto {
++        return value.run {
++            HeadlineDto(
++                id = id,
++                author = author,
++                content = content,
++                description = description,
++                publishedAt = publishedAt,
++                source = source,
++                title = title,
++                url = url,
++                urlToImage = urlToImage,
++                favourite = favourite,
++                category = category,
++                page = page
++            )
++        }
++    }
++}
+\ No newline at end of file
+Index: app/src/main/java/hoods/com/newsy/features_components/headline/data/mapper/ArticleHeadlineDtoMapper.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/hoods/com/newsy/features_components/headline/data/mapper/ArticleHeadlineDtoMapper.kt b/app/src/main/java/hoods/com/newsy/features_components/headline/data/mapper/ArticleHeadlineDtoMapper.kt
+new file mode 100644
+--- /dev/null	(date 1696778678258)
++++ b/app/src/main/java/hoods/com/newsy/features_components/headline/data/mapper/ArticleHeadlineDtoMapper.kt	(date 1696778678258)
+@@ -0,0 +1,39 @@
++package hoods.com.newsy.features_components.headline.data.mapper
++
++import hoods.com.newsy.features_components.core.data.remote.models.Article
++import hoods.com.newsy.features_components.core.domain.mapper.Mapper
++import hoods.com.newsy.features_components.headline.data.local.model.HeadlineDto
++
++class ArticleHeadlineDtoMapper(
++    private val page: Int = 0,
++    private val category: String = "",
++) : Mapper<Article, HeadlineDto> {
++    override fun toModel(value: Article): HeadlineDto {
++        return value.run {
++            HeadlineDto(
++                author = formatEmptyValue(author, "author"),
++                content = formatEmptyValue(content, "content"),
++                description = formatEmptyValue(description, "description"),
++                publishedAt = publishedAt,
++                source = source.name,
++                title = title,
++                url = url,
++                urlToImage = urlToImage,
++                page = page,
++                category = category
++            )
++        }
++    }
++
++    override fun fromModel(value: HeadlineDto): Article {
++        return value.run {
++            Article(
++                author, content, description, publishedAt
++            )
++        }
++    }
++
++    private fun formatEmptyValue(value: String?, default: String = ""): String {
++        return value ?: "Unknown $default"
++    }
++}
+\ No newline at end of file
+Index: app/src/main/java/hoods/com/newsy/features_components/headline/data/paging/HeadlineRemoteMediator.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/hoods/com/newsy/features_components/headline/data/paging/HeadlineRemoteMediator.kt b/app/src/main/java/hoods/com/newsy/features_components/headline/data/paging/HeadlineRemoteMediator.kt
+new file mode 100644
+--- /dev/null	(date 1696778678238)
++++ b/app/src/main/java/hoods/com/newsy/features_components/headline/data/paging/HeadlineRemoteMediator.kt	(date 1696778678238)
+@@ -0,0 +1,151 @@
++package hoods.com.newsy.features_components.headline.data.paging
++
++import androidx.paging.ExperimentalPagingApi
++import androidx.paging.LoadType
++import androidx.paging.PagingState
++import androidx.paging.RemoteMediator
++import androidx.room.withTransaction
++import hoods.com.newsy.features_components.core.data.local.NewsyArticleDatabase
++import hoods.com.newsy.features_components.core.data.remote.models.Article
++import hoods.com.newsy.features_components.core.domain.mapper.Mapper
++import hoods.com.newsy.features_components.headline.data.local.model.HeadlineDto
++import hoods.com.newsy.features_components.headline.data.local.model.HeadlineRemoteKey
++import hoods.com.newsy.features_components.headline.data.mapper.ArticleHeadlineDtoMapper
++import hoods.com.newsy.features_components.headline.data.remote.HeadlineApi
++import retrofit2.HttpException
++import java.io.IOException
++import java.util.concurrent.TimeUnit
++
++@OptIn(ExperimentalPagingApi::class)
++class HeadlineRemoteMediator(
++    private val api: HeadlineApi,
++    private val database: NewsyArticleDatabase,
++    private val articleHeadlineDtoMapper: Mapper<Article, HeadlineDto>,
++    private val category: String = "",
++    private val country: String = "",
++    private val language: String = "",
++) : RemoteMediator<Int, HeadlineDto>() {
++
++    override suspend fun initialize(): InitializeAction {
++        val cacheTimeout = TimeUnit.MILLISECONDS.convert(20, TimeUnit.MINUTES)
++        return if (
++            System.currentTimeMillis() -
++            (database.headlineRemoteDao().getCreationTime() ?: 0) < cacheTimeout
++        ) {
++            InitializeAction.SKIP_INITIAL_REFRESH
++        } else {
++            InitializeAction.LAUNCH_INITIAL_REFRESH
++        }
++    }
++
++    override suspend fun load(
++        loadType: LoadType,
++        state: PagingState<Int, HeadlineDto>,
++    ): MediatorResult {
++        val page: Int = when (loadType) {
++            LoadType.REFRESH -> {
++                val remoteKey = getRemoteKeyClosestToCurrentPosition(state)
++                remoteKey?.nextKey?.minus(1) ?: 1
++            }
++
++            LoadType.PREPEND -> {
++                val remoteKey = getRemoteKeyForFirstItem(state)
++                val prevKey = remoteKey?.prevKey
++                prevKey ?: return MediatorResult.Success(
++                    endOfPaginationReached = remoteKey != null
++                )
++            }
++
++            LoadType.APPEND -> {
++                val remoteKey = getRemoteKeyForLastItem(state)
++                val nextKey = remoteKey?.nextKey
++                nextKey ?: return MediatorResult.Success(
++                    endOfPaginationReached = remoteKey != null
++                )
++            }
++        }
++        return try {
++            val headlineApiResponse = api.getHeadlines(
++                pageSize = state.config.pageSize,
++                category = category,
++                page = page,
++                country = country,
++                language = language,
++            )
++            val headlineArticles = headlineApiResponse.articles
++            val endOfPaginationReached = headlineArticles.isEmpty()
++            database.apply {
++                if (loadType == LoadType.REFRESH) {
++                    database.apply {
++                        headlineRemoteDao().clearRemoteKeys()
++                        headlineDao().removeAllHeadlineArticles()
++                    }
++                }
++                val prevKey = if (page > 1) page - 1 else null
++                val nextKey = if (endOfPaginationReached) null else page + 1
++                val remoteKeys = headlineArticles.map {
++                    HeadlineRemoteKey(
++                        articleId = it.url,
++                        prevKey = prevKey,
++                        nextKey = nextKey,
++                        currentPage = page
++                    )
++                }
++                database.apply {
++                    headlineRemoteDao().insertAll(remoteKeys)
++                    headlineDao().insertHeadlineArticle(
++                        articles = headlineArticles.map {
++                            articleHeadlineDtoMapper.toModel(
++                                it
++                            )
++                        }
++                    )
++                }
++
++            }
++            MediatorResult.Success(endOfPaginationReached)
++        } catch (error: IOException) {
++            MediatorResult.Error(error)
++        } catch (error: HttpException) {
++            MediatorResult.Error(error)
++        }
++
++    }
++
++    private suspend fun getRemoteKeyForFirstItem(
++        state: PagingState<Int, HeadlineDto>,
++    ): HeadlineRemoteKey? {
++        return state.pages.firstOrNull() {
++            it.data.isNotEmpty()
++        }?.data?.firstOrNull()?.let { article ->
++            database.headlineRemoteDao().getRemoteKeyByArticleId(article.url)
++        }
++    }
++
++    private suspend fun getRemoteKeyClosestToCurrentPosition(
++        state: PagingState<Int, HeadlineDto>,
++    ): HeadlineRemoteKey? {
++        return state.anchorPosition?.let { position ->
++            state.closestItemToPosition(position)?.url?.let { id ->
++                database.headlineRemoteDao().getRemoteKeyByArticleId(id)
++            }
++        }
++    }
++
++    private suspend fun getRemoteKeyForLastItem(
++        state: PagingState<Int, HeadlineDto>,
++    ): HeadlineRemoteKey? {
++        return state.pages.lastOrNull() {
++            it.data.isNotEmpty()
++        }?.data?.lastOrNull()?.let { article ->
++            database.headlineRemoteDao().getRemoteKeyByArticleId(article.url)
++        }
++    }
++
++
++}
++
++
++
++
++
+Index: app/src/main/java/hoods/com/newsy/features_components/headline/data/remote/HeadlineApi.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/hoods/com/newsy/features_components/headline/data/remote/HeadlineApi.kt b/app/src/main/java/hoods/com/newsy/features_components/headline/data/remote/HeadlineApi.kt
+new file mode 100644
+--- /dev/null	(date 1696778678222)
++++ b/app/src/main/java/hoods/com/newsy/features_components/headline/data/remote/HeadlineApi.kt	(date 1696778678222)
+@@ -0,0 +1,25 @@
++package hoods.com.newsy.features_components.headline.data.remote
++
++import hoods.com.newsy.features_components.core.data.remote.models.NewsyRemoteDto
++import hoods.com.newsy.utils.K
++import retrofit2.http.GET
++import retrofit2.http.Query
++
++interface HeadlineApi {
++    companion object {
++        private const val HEADLINE_END_POINT = "/v2/top-headlines"
++    }
++
++    @GET(HEADLINE_END_POINT)
++    suspend fun getHeadlines(
++        @Query("apiKey") key: String = K.API_KEY,
++        @Query("category") category: String,
++        @Query("country") country: String,
++        @Query("language") language: String,
++        @Query("page") page: Int,
++        @Query("pageSize") pageSize: Int,
++    ):NewsyRemoteDto
++
++
++
++}
+\ No newline at end of file
+Index: app/src/main/java/hoods/com/newsy/features_components/headline/data/repository/HeadlineRepositoryImpl.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/hoods/com/newsy/features_components/headline/data/repository/HeadlineRepositoryImpl.kt b/app/src/main/java/hoods/com/newsy/features_components/headline/data/repository/HeadlineRepositoryImpl.kt
+new file mode 100644
+--- /dev/null	(date 1696778678206)
++++ b/app/src/main/java/hoods/com/newsy/features_components/headline/data/repository/HeadlineRepositoryImpl.kt	(date 1696778678206)
+@@ -0,0 +1,62 @@
++package hoods.com.newsy.features_components.headline.data.repository
++
++import androidx.paging.ExperimentalPagingApi
++import androidx.paging.Pager
++import androidx.paging.PagingConfig
++import androidx.paging.PagingData
++import androidx.paging.map
++import hoods.com.newsy.features_components.core.data.local.NewsyArticleDatabase
++import hoods.com.newsy.features_components.core.data.remote.models.Article
++import hoods.com.newsy.features_components.core.data.remote.models.NewsyRemoteDto
++import hoods.com.newsy.features_components.core.domain.mapper.Mapper
++import hoods.com.newsy.features_components.core.domain.models.NewsyArticle
++import hoods.com.newsy.features_components.headline.data.local.model.HeadlineDto
++import hoods.com.newsy.features_components.headline.data.paging.HeadlineRemoteMediator
++import hoods.com.newsy.features_components.headline.data.remote.HeadlineApi
++import hoods.com.newsy.features_components.headline.domain.repository.HeadlineRepository
++import hoods.com.newsy.utils.K
++import kotlinx.coroutines.flow.Flow
++import kotlinx.coroutines.flow.map
++
++class HeadlineRepositoryImpl(
++    private val headlineApi: HeadlineApi,
++    private val database: NewsyArticleDatabase,
++    private val mapper: Mapper<HeadlineDto, NewsyArticle>,
++    private val articleHeadlineMapper: Mapper<Article, HeadlineDto>,
++) : HeadlineRepository {
++    @OptIn(ExperimentalPagingApi::class)
++    override fun fetchHeadlineArticle(
++        category: String,
++        country: String,
++        language: String,
++    ): Flow<PagingData<NewsyArticle>> {
++        return Pager(
++            PagingConfig(
++                pageSize = K.PAGE_SIZE,
++                prefetchDistance = K.PAGE_SIZE - 1,
++                initialLoadSize = 10
++            ),
++            remoteMediator = HeadlineRemoteMediator(
++                api = headlineApi,
++                database = database,
++                category = category,
++                country = country,
++                language = language,
++                articleHeadlineDtoMapper = articleHeadlineMapper
++            )
++        ) {
++            database.headlineDao().getAllHeadlineArticles()
++        }.flow.map { dtoPager ->
++            dtoPager.map { dto ->
++                mapper.toModel(dto)
++            }
++        }
++    }
++
++    override suspend fun updateFavouriteArticle(newsyArticle: NewsyArticle) {
++        database.headlineDao().updateFavouriteArticle(
++            isFavourite = newsyArticle.favourite,
++            id = newsyArticle.id
++        )
++    }
++}
+\ No newline at end of file
+Index: app/src/main/java/hoods/com/newsy/features_components/headline/domain/use_cases/HeadlineUseCases.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/hoods/com/newsy/features_components/headline/domain/use_cases/HeadlineUseCases.kt b/app/src/main/java/hoods/com/newsy/features_components/headline/domain/use_cases/HeadlineUseCases.kt
+new file mode 100644
+--- /dev/null	(date 1696778678162)
++++ b/app/src/main/java/hoods/com/newsy/features_components/headline/domain/use_cases/HeadlineUseCases.kt	(date 1696778678162)
+@@ -0,0 +1,6 @@
++package hoods.com.newsy.features_components.headline.domain.use_cases
++
++data class HeadlineUseCases(
++    val fetchHeadlineArticleUseCase: FetchHeadlineArticleUseCase,
++    val updateHeadlineFavouriteUseCase: UpdateHeadlineFavouriteUseCase,
++)
+\ No newline at end of file
+Index: app/src/main/java/hoods/com/newsy/features_components/headline/domain/use_cases/FetchHeadlineArticleUseCase.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/hoods/com/newsy/features_components/headline/domain/use_cases/FetchHeadlineArticleUseCase.kt b/app/src/main/java/hoods/com/newsy/features_components/headline/domain/use_cases/FetchHeadlineArticleUseCase.kt
+new file mode 100644
+--- /dev/null	(date 1696778678150)
++++ b/app/src/main/java/hoods/com/newsy/features_components/headline/domain/use_cases/FetchHeadlineArticleUseCase.kt	(date 1696778678150)
+@@ -0,0 +1,18 @@
++package hoods.com.newsy.features_components.headline.domain.use_cases
++
++import androidx.paging.PagingData
++import hoods.com.newsy.features_components.core.domain.models.NewsyArticle
++import hoods.com.newsy.features_components.headline.domain.repository.HeadlineRepository
++import kotlinx.coroutines.flow.Flow
++
++class FetchHeadlineArticleUseCase(
++    private val repository: HeadlineRepository,
++) {
++    operator fun invoke(
++        category: String,
++        countryCode: String,
++        languageCode: String,
++    ): Flow<PagingData<NewsyArticle>> = repository.fetchHeadlineArticle(
++        category, countryCode, languageCode
++    )
++}
+\ No newline at end of file
+Index: app/src/main/java/hoods/com/newsy/features_components/headline/domain/use_cases/UpdateHeadlineFavouriteUseCase.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/hoods/com/newsy/features_components/headline/domain/use_cases/UpdateHeadlineFavouriteUseCase.kt b/app/src/main/java/hoods/com/newsy/features_components/headline/domain/use_cases/UpdateHeadlineFavouriteUseCase.kt
+new file mode 100644
+--- /dev/null	(date 1696778678142)
++++ b/app/src/main/java/hoods/com/newsy/features_components/headline/domain/use_cases/UpdateHeadlineFavouriteUseCase.kt	(date 1696778678142)
+@@ -0,0 +1,12 @@
++package hoods.com.newsy.features_components.headline.domain.use_cases
++
++import hoods.com.newsy.features_components.core.domain.models.NewsyArticle
++import hoods.com.newsy.features_components.headline.domain.repository.HeadlineRepository
++
++class UpdateHeadlineFavouriteUseCase(
++    private val repository: HeadlineRepository,
++) {
++    suspend operator fun invoke(article: NewsyArticle) {
++        repository.updateFavouriteArticle(article)
++    }
++}
+\ No newline at end of file
+Index: app/src/main/java/hoods/com/newsy/features_components/headline/domain/repository/HeadlineRepository.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/hoods/com/newsy/features_components/headline/domain/repository/HeadlineRepository.kt b/app/src/main/java/hoods/com/newsy/features_components/headline/domain/repository/HeadlineRepository.kt
+new file mode 100644
+--- /dev/null	(date 1696778678126)
++++ b/app/src/main/java/hoods/com/newsy/features_components/headline/domain/repository/HeadlineRepository.kt	(date 1696778678126)
+@@ -0,0 +1,15 @@
++package hoods.com.newsy.features_components.headline.domain.repository
++
++import androidx.paging.PagingData
++import hoods.com.newsy.features_components.core.domain.models.NewsyArticle
++import kotlinx.coroutines.flow.Flow
++
++interface HeadlineRepository {
++    fun fetchHeadlineArticle(
++        category: String,
++        country: String,
++        language: String,
++    ): Flow<PagingData<NewsyArticle>>
++
++    suspend fun updateFavouriteArticle(newsyArticle: NewsyArticle)
++}
+\ No newline at end of file
+Index: app/src/main/java/hoods/com/newsy/features_presentations/core/ui/theme/Type.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/hoods/com/newsy/features_presentations/core/ui/theme/Type.kt b/app/src/main/java/hoods/com/newsy/features_presentations/core/ui/theme/Type.kt
+new file mode 100644
+--- /dev/null	(date 1696778678642)
++++ b/app/src/main/java/hoods/com/newsy/features_presentations/core/ui/theme/Type.kt	(date 1696778678642)
+@@ -0,0 +1,34 @@
++package hoods.com.newsy.features_presentations.core.ui.theme
++
++import androidx.compose.material3.Typography
++import androidx.compose.ui.text.TextStyle
++import androidx.compose.ui.text.font.FontFamily
++import androidx.compose.ui.text.font.FontWeight
++import androidx.compose.ui.unit.sp
++
++// Set of Material typography styles to start with
++val Typography = Typography(
++    bodyLarge = TextStyle(
++        fontFamily = FontFamily.Default,
++        fontWeight = FontWeight.Normal,
++        fontSize = 16.sp,
++        lineHeight = 24.sp,
++        letterSpacing = 0.5.sp
++    )
++    /* Other default text styles to override
++    titleLarge = TextStyle(
++        fontFamily = FontFamily.Default,
++        fontWeight = FontWeight.Normal,
++        fontSize = 22.sp,
++        lineHeight = 28.sp,
++        letterSpacing = 0.sp
++    ),
++    labelSmall = TextStyle(
++        fontFamily = FontFamily.Default,
++        fontWeight = FontWeight.Medium,
++        fontSize = 11.sp,
++        lineHeight = 16.sp,
++        letterSpacing = 0.5.sp
++    )
++    */
++)
+\ No newline at end of file
+Index: app/src/main/java/hoods/com/newsy/features_presentations/core/ui/theme/Color.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/hoods/com/newsy/features_presentations/core/ui/theme/Color.kt b/app/src/main/java/hoods/com/newsy/features_presentations/core/ui/theme/Color.kt
+new file mode 100644
+--- /dev/null	(date 1696778678634)
++++ b/app/src/main/java/hoods/com/newsy/features_presentations/core/ui/theme/Color.kt	(date 1696778678634)
+@@ -0,0 +1,68 @@
++package hoods.com.newsy.features_presentations.core.ui.theme
++
++import androidx.compose.ui.graphics.Color
++
++val md_theme_light_primary = Color(0xFF855400)
++val md_theme_light_onPrimary = Color(0xFFFFFFFF)
++val md_theme_light_primaryContainer = Color(0xFFFFDDB7)
++val md_theme_light_onPrimaryContainer = Color(0xFF2A1700)
++val md_theme_light_secondary = Color(0xFF705B41)
++val md_theme_light_onSecondary = Color(0xFFFFFFFF)
++val md_theme_light_secondaryContainer = Color(0xFFFCDEBC)
++val md_theme_light_onSecondaryContainer = Color(0xFF281805)
++val md_theme_light_tertiary = Color(0xFF53643E)
++val md_theme_light_onTertiary = Color(0xFFFFFFFF)
++val md_theme_light_tertiaryContainer = Color(0xFFD6E9B9)
++val md_theme_light_onTertiaryContainer = Color(0xFF121F03)
++val md_theme_light_error = Color(0xFFBA1A1A)
++val md_theme_light_errorContainer = Color(0xFFFFDAD6)
++val md_theme_light_onError = Color(0xFFFFFFFF)
++val md_theme_light_onErrorContainer = Color(0xFF410002)
++val md_theme_light_background = Color(0xFFFFFBFF)
++val md_theme_light_onBackground = Color(0xFF1F1B16)
++val md_theme_light_surface = Color(0xFFFFFBFF)
++val md_theme_light_onSurface = Color(0xFF1F1B16)
++val md_theme_light_surfaceVariant = Color(0xFFF0E0D0)
++val md_theme_light_onSurfaceVariant = Color(0xFF504539)
++val md_theme_light_outline = Color(0xFF827568)
++val md_theme_light_inverseOnSurface = Color(0xFFF9EFE7)
++val md_theme_light_inverseSurface = Color(0xFF352F2A)
++val md_theme_light_inversePrimary = Color(0xFFFFB95C)
++val md_theme_light_shadow = Color(0xFF000000)
++val md_theme_light_surfaceTint = Color(0xFF855400)
++val md_theme_light_outlineVariant = Color(0xFFD4C4B5)
++val md_theme_light_scrim = Color(0xFF000000)
++
++val md_theme_dark_primary = Color(0xFFFFB95C)
++val md_theme_dark_onPrimary = Color(0xFF462A00)
++val md_theme_dark_primaryContainer = Color(0xFF653E00)
++val md_theme_dark_onPrimaryContainer = Color(0xFFFFDDB7)
++val md_theme_dark_secondary = Color(0xFFDFC2A2)
++val md_theme_dark_onSecondary = Color(0xFF3F2D17)
++val md_theme_dark_secondaryContainer = Color(0xFF57432B)
++val md_theme_dark_onSecondaryContainer = Color(0xFFFCDEBC)
++val md_theme_dark_tertiary = Color(0xFFBACD9F)
++val md_theme_dark_onTertiary = Color(0xFF263514)
++val md_theme_dark_tertiaryContainer = Color(0xFF3C4C28)
++val md_theme_dark_onTertiaryContainer = Color(0xFFD6E9B9)
++val md_theme_dark_error = Color(0xFFFFB4AB)
++val md_theme_dark_errorContainer = Color(0xFF93000A)
++val md_theme_dark_onError = Color(0xFF690005)
++val md_theme_dark_onErrorContainer = Color(0xFFFFDAD6)
++val md_theme_dark_background = Color(0xFF1F1B16)
++val md_theme_dark_onBackground = Color(0xFFEBE1D9)
++val md_theme_dark_surface = Color(0xFF1F1B16)
++val md_theme_dark_onSurface = Color(0xFFEBE1D9)
++val md_theme_dark_surfaceVariant = Color(0xFF504539)
++val md_theme_dark_onSurfaceVariant = Color(0xFFD4C4B5)
++val md_theme_dark_outline = Color(0xFF9C8E80)
++val md_theme_dark_inverseOnSurface = Color(0xFF1F1B16)
++val md_theme_dark_inverseSurface = Color(0xFFEBE1D9)
++val md_theme_dark_inversePrimary = Color(0xFF855400)
++val md_theme_dark_shadow = Color(0xFF000000)
++val md_theme_dark_surfaceTint = Color(0xFFFFB95C)
++val md_theme_dark_outlineVariant = Color(0xFF504539)
++val md_theme_dark_scrim = Color(0xFF000000)
++
++
++val seed = Color(0xFFFFA500)
+\ No newline at end of file
+Index: app/src/main/java/hoods/com/newsy/features_presentations/core/ui/theme/Theme.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/hoods/com/newsy/features_presentations/core/ui/theme/Theme.kt b/app/src/main/java/hoods/com/newsy/features_presentations/core/ui/theme/Theme.kt
+new file mode 100644
+--- /dev/null	(date 1696778678626)
++++ b/app/src/main/java/hoods/com/newsy/features_presentations/core/ui/theme/Theme.kt	(date 1696778678626)
+@@ -0,0 +1,115 @@
++package hoods.com.newsy.features_presentations.core.ui.theme
++
++import android.app.Activity
++import android.os.Build
++import androidx.compose.foundation.isSystemInDarkTheme
++import androidx.compose.material3.MaterialTheme
++import androidx.compose.material3.darkColorScheme
++import androidx.compose.material3.dynamicDarkColorScheme
++import androidx.compose.material3.dynamicLightColorScheme
++import androidx.compose.material3.lightColorScheme
++import androidx.compose.runtime.Composable
++import androidx.compose.runtime.SideEffect
++import androidx.compose.ui.graphics.toArgb
++import androidx.compose.ui.platform.LocalContext
++import androidx.compose.ui.platform.LocalView
++import androidx.core.view.WindowCompat
++
++
++
++private val LightColors = lightColorScheme(
++    primary = md_theme_light_primary,
++    onPrimary = md_theme_light_onPrimary,
++    primaryContainer = md_theme_light_primaryContainer,
++    onPrimaryContainer = md_theme_light_onPrimaryContainer,
++    secondary = md_theme_light_secondary,
++    onSecondary = md_theme_light_onSecondary,
++    secondaryContainer = md_theme_light_secondaryContainer,
++    onSecondaryContainer = md_theme_light_onSecondaryContainer,
++    tertiary = md_theme_light_tertiary,
++    onTertiary = md_theme_light_onTertiary,
++    tertiaryContainer = md_theme_light_tertiaryContainer,
++    onTertiaryContainer = md_theme_light_onTertiaryContainer,
++    error = md_theme_light_error,
++    errorContainer = md_theme_light_errorContainer,
++    onError = md_theme_light_onError,
++    onErrorContainer = md_theme_light_onErrorContainer,
++    background = md_theme_light_background,
++    onBackground = md_theme_light_onBackground,
++    surface = md_theme_light_surface,
++    onSurface = md_theme_light_onSurface,
++    surfaceVariant = md_theme_light_surfaceVariant,
++    onSurfaceVariant = md_theme_light_onSurfaceVariant,
++    outline = md_theme_light_outline,
++    inverseOnSurface = md_theme_light_inverseOnSurface,
++    inverseSurface = md_theme_light_inverseSurface,
++    inversePrimary = md_theme_light_inversePrimary,
++    surfaceTint = md_theme_light_surfaceTint,
++    outlineVariant = md_theme_light_outlineVariant,
++    scrim = md_theme_light_scrim,
++)
++
++
++private val DarkColors = darkColorScheme(
++    primary = md_theme_dark_primary,
++    onPrimary = md_theme_dark_onPrimary,
++    primaryContainer = md_theme_dark_primaryContainer,
++    onPrimaryContainer = md_theme_dark_onPrimaryContainer,
++    secondary = md_theme_dark_secondary,
++    onSecondary = md_theme_dark_onSecondary,
++    secondaryContainer = md_theme_dark_secondaryContainer,
++    onSecondaryContainer = md_theme_dark_onSecondaryContainer,
++    tertiary = md_theme_dark_tertiary,
++    onTertiary = md_theme_dark_onTertiary,
++    tertiaryContainer = md_theme_dark_tertiaryContainer,
++    onTertiaryContainer = md_theme_dark_onTertiaryContainer,
++    error = md_theme_dark_error,
++    errorContainer = md_theme_dark_errorContainer,
++    onError = md_theme_dark_onError,
++    onErrorContainer = md_theme_dark_onErrorContainer,
++    background = md_theme_dark_background,
++    onBackground = md_theme_dark_onBackground,
++    surface = md_theme_dark_surface,
++    onSurface = md_theme_dark_onSurface,
++    surfaceVariant = md_theme_dark_surfaceVariant,
++    onSurfaceVariant = md_theme_dark_onSurfaceVariant,
++    outline = md_theme_dark_outline,
++    inverseOnSurface = md_theme_dark_inverseOnSurface,
++    inverseSurface = md_theme_dark_inverseSurface,
++    inversePrimary = md_theme_dark_inversePrimary,
++    surfaceTint = md_theme_dark_surfaceTint,
++    outlineVariant = md_theme_dark_outlineVariant,
++    scrim = md_theme_dark_scrim,
++)
++
++@Composable
++fun NewsyTheme(
++    darkTheme: Boolean = isSystemInDarkTheme(),
++    // Dynamic color is available on Android 12+
++    dynamicColor: Boolean = true,
++    content: @Composable () -> Unit
++) {
++    val colorScheme = when {
++        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
++            val context = LocalContext.current
++            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
++        }
++
++        darkTheme -> DarkColors
++        else -> LightColors
++    }
++    val view = LocalView.current
++    if (!view.isInEditMode) {
++        SideEffect {
++            val window = (view.context as Activity).window
++            window.statusBarColor = colorScheme.primary.toArgb()
++            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = darkTheme
++        }
++    }
++
++    MaterialTheme(
++        colorScheme = colorScheme,
++        typography = Typography,
++        content = content
++    )
++}
+\ No newline at end of file
+Index: app/src/main/java/hoods/com/newsy/features_presentations/core/components/Constants.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/hoods/com/newsy/features_presentations/core/components/Constants.kt b/app/src/main/java/hoods/com/newsy/features_presentations/core/components/Constants.kt
+new file mode 100644
+--- /dev/null	(date 1696778678606)
++++ b/app/src/main/java/hoods/com/newsy/features_presentations/core/components/Constants.kt	(date 1696778678606)
+@@ -0,0 +1,8 @@
++package hoods.com.newsy.features_presentations.core.components
++
++import androidx.compose.ui.unit.dp
++
++val itemSpacing = 6.dp
++val defaultSpacing = 12.dp
++val defaultPadding = 12.dp
++val itemPadding = 6.dp
+\ No newline at end of file
+Index: app/src/main/java/hoods/com/newsy/features_presentations/core/components/HeaderTitle.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/hoods/com/newsy/features_presentations/core/components/HeaderTitle.kt b/app/src/main/java/hoods/com/newsy/features_presentations/core/components/HeaderTitle.kt
+new file mode 100644
+--- /dev/null	(date 1696778678598)
++++ b/app/src/main/java/hoods/com/newsy/features_presentations/core/components/HeaderTitle.kt	(date 1696778678598)
+@@ -0,0 +1,63 @@
++package hoods.com.newsy.features_presentations.core.components
++
++import androidx.compose.foundation.layout.Arrangement
++import androidx.compose.foundation.layout.Row
++import androidx.compose.foundation.layout.Spacer
++import androidx.compose.foundation.layout.fillMaxWidth
++import androidx.compose.foundation.layout.padding
++import androidx.compose.foundation.layout.size
++import androidx.compose.material.icons.Icons
++import androidx.compose.material.icons.filled.Home
++import androidx.compose.material3.Icon
++import androidx.compose.material3.MaterialTheme
++import androidx.compose.material3.Text
++import androidx.compose.runtime.Composable
++import androidx.compose.ui.Alignment
++import androidx.compose.ui.Modifier
++import androidx.compose.ui.graphics.vector.ImageVector
++import androidx.compose.ui.text.font.FontWeight
++import androidx.compose.ui.tooling.preview.Preview
++import hoods.com.newsy.features_presentations.core.ui.theme.NewsyTheme
++
++@Composable
++fun HeaderTitle(
++    title: String,
++    icon: ImageVector,
++) {
++    Row(
++        horizontalArrangement = Arrangement.SpaceBetween,
++        verticalAlignment = Alignment.CenterVertically,
++        modifier = Modifier.fillMaxWidth().padding(
++            horizontal = defaultPadding
++        )
++    ) {
++        TitleText(text = title)
++        Spacer(modifier = Modifier.size(defaultPadding))
++        Icon(
++            imageVector = icon,
++            contentDescription = title,
++            tint = MaterialTheme.colorScheme.error
++        )
++    }
++
++}
++
++@Composable
++fun TitleText(text: String) {
++    Text(
++        text = text,
++        style = MaterialTheme.typography.titleLarge,
++        fontWeight = FontWeight.Bold
++    )
++}
++
++@Preview(showBackground = true)
++@Composable
++fun PrevHeaderTitle() {
++    NewsyTheme {
++        HeaderTitle(
++            title = "Title",
++            icon = Icons.Default.Home
++        )
++    }
++}
+\ No newline at end of file
+Index: app/src/main/java/hoods/com/newsy/features_presentations/core/components/PaginationLoadingItem.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/hoods/com/newsy/features_presentations/core/components/PaginationLoadingItem.kt b/app/src/main/java/hoods/com/newsy/features_presentations/core/components/PaginationLoadingItem.kt
+new file mode 100644
+--- /dev/null	(date 1696778678590)
++++ b/app/src/main/java/hoods/com/newsy/features_presentations/core/components/PaginationLoadingItem.kt	(date 1696778678590)
+@@ -0,0 +1,27 @@
++package hoods.com.newsy.features_presentations.core.components
++
++import androidx.compose.runtime.Composable
++import androidx.paging.LoadState
++
++@Composable
++fun PaginationLoadingItem(
++    pagingState: LoadState?,
++    onError: (e: Throwable) -> Unit,
++    onLoading: @Composable () -> Unit,
++) {
++    when (pagingState) {
++        is LoadState.Error -> {
++            val error = pagingState.error
++            onError(error)
++        }
++
++        is LoadState.Loading -> {
++            onLoading()
++        }
++
++        else -> {}
++
++
++    }
++
++}
+\ No newline at end of file
+Index: app/src/main/java/hoods/com/newsy/features_presentations/core/MainActivity.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/hoods/com/newsy/features_presentations/core/MainActivity.kt b/app/src/main/java/hoods/com/newsy/features_presentations/core/MainActivity.kt
+new file mode 100644
+--- /dev/null	(date 1696778678578)
++++ b/app/src/main/java/hoods/com/newsy/features_presentations/core/MainActivity.kt	(date 1696778678578)
+@@ -0,0 +1,54 @@
++package hoods.com.newsy.features_presentations.core
++
++import android.os.Bundle
++import androidx.activity.ComponentActivity
++import androidx.activity.compose.setContent
++import androidx.compose.foundation.layout.fillMaxSize
++import androidx.compose.material3.MaterialTheme
++import androidx.compose.material3.Surface
++import androidx.compose.material3.Text
++import androidx.compose.runtime.Composable
++import androidx.compose.ui.Modifier
++import androidx.compose.ui.tooling.preview.Preview
++import dagger.hilt.android.AndroidEntryPoint
++import hoods.com.newsy.features_presentations.core.ui.theme.NewsyTheme
++import hoods.com.newsy.features_presentations.home.HomeScreen
++
++@AndroidEntryPoint
++class MainActivity : ComponentActivity() {
++    override fun onCreate(savedInstanceState: Bundle?) {
++        super.onCreate(savedInstanceState)
++        setContent {
++            NewsyTheme {
++                // A surface container using the 'background' color from the theme
++                Surface(
++                    modifier = Modifier.fillMaxSize(),
++                    color = MaterialTheme.colorScheme.background
++                ) {
++                    HomeScreen(
++                        onViewMoreClick = {},
++                        onHeadlineItemClick = {},
++                        onSearchClick = {},
++                        openDrawer = {}
++                    )
++                }
++            }
++        }
++    }
++}
++
++@Composable
++fun Greeting(name: String, modifier: Modifier = Modifier) {
++    Text(
++        text = "Hello $name!",
++        modifier = modifier
++    )
++}
++
++@Preview(showBackground = true)
++@Composable
++fun GreetingPreview() {
++    NewsyTheme {
++        Greeting("Android")
++    }
++}
+\ No newline at end of file
+Index: app/src/main/java/hoods/com/newsy/features_presentations/home/viewmodel/HomeState.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/hoods/com/newsy/features_presentations/home/viewmodel/HomeState.kt b/app/src/main/java/hoods/com/newsy/features_presentations/home/viewmodel/HomeState.kt
+new file mode 100644
+--- /dev/null	(date 1696778678562)
++++ b/app/src/main/java/hoods/com/newsy/features_presentations/home/viewmodel/HomeState.kt	(date 1696778678562)
+@@ -0,0 +1,12 @@
++package hoods.com.newsy.features_presentations.home.viewmodel
++
++import androidx.paging.PagingData
++import hoods.com.newsy.features_components.core.domain.models.NewsyArticle
++import hoods.com.newsy.utils.ArticleCategory
++import kotlinx.coroutines.flow.Flow
++import kotlinx.coroutines.flow.emptyFlow
++
++data class HomeState(
++    val headlineArticles: Flow<PagingData<NewsyArticle>> = emptyFlow(),
++    val selectedHeadlineCategory: ArticleCategory = ArticleCategory.BUSINESS,
++)
+Index: app/src/main/java/hoods/com/newsy/features_presentations/home/viewmodel/HomeUIEvents.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/hoods/com/newsy/features_presentations/home/viewmodel/HomeUIEvents.kt b/app/src/main/java/hoods/com/newsy/features_presentations/home/viewmodel/HomeUIEvents.kt
+new file mode 100644
+--- /dev/null	(date 1696778678558)
++++ b/app/src/main/java/hoods/com/newsy/features_presentations/home/viewmodel/HomeUIEvents.kt	(date 1696778678558)
+@@ -0,0 +1,12 @@
++package hoods.com.newsy.features_presentations.home.viewmodel
++
++import hoods.com.newsy.features_components.core.domain.models.NewsyArticle
++import hoods.com.newsy.utils.ArticleCategory
++
++sealed class HomeUIEvents{
++    object ViewMoreClicked:HomeUIEvents()
++    data class ArticleClicked(val url:String):HomeUIEvents()
++    data class CategoryChange(val category: ArticleCategory) : HomeUIEvents()
++    data class PreferencePanelToggle(val isOpen: Boolean) : HomeUIEvents()
++    data class OnHeadLineFavouriteChange(val article: NewsyArticle) : HomeUIEvents()
++}
+\ No newline at end of file
+Index: app/src/main/java/hoods/com/newsy/features_presentations/home/viewmodel/HomeViewModel.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/hoods/com/newsy/features_presentations/home/viewmodel/HomeViewModel.kt b/app/src/main/java/hoods/com/newsy/features_presentations/home/viewmodel/HomeViewModel.kt
+new file mode 100644
+--- /dev/null	(date 1696778678546)
++++ b/app/src/main/java/hoods/com/newsy/features_presentations/home/viewmodel/HomeViewModel.kt	(date 1696778678546)
+@@ -0,0 +1,60 @@
++package hoods.com.newsy.features_presentations.home.viewmodel
++
++import androidx.compose.runtime.getValue
++import androidx.compose.runtime.mutableStateOf
++import androidx.compose.runtime.setValue
++import androidx.lifecycle.ViewModel
++import androidx.lifecycle.viewModelScope
++import androidx.paging.cachedIn
++import dagger.hilt.android.lifecycle.HiltViewModel
++import hoods.com.newsy.features_components.headline.domain.use_cases.HeadlineUseCases
++import hoods.com.newsy.utils.Utils
++import kotlinx.coroutines.launch
++import javax.inject.Inject
++
++@HiltViewModel
++class HomeViewModel @Inject constructor(
++    private val headlineUseCases: HeadlineUseCases,
++) : ViewModel() {
++    var homeState by mutableStateOf(HomeState())
++        private set
++
++
++    init {
++        loadArticles()
++    }
++
++
++    private fun loadArticles() {
++        homeState = homeState.copy(
++            headlineArticles =
++            headlineUseCases.fetchHeadlineArticleUseCase(
++                category = homeState.selectedHeadlineCategory.category,
++                countryCode = Utils.countryCodeList[0].code,
++                languageCode = Utils.languageCodeList[0].code
++            ).cachedIn(viewModelScope)
++        )
++    }
++
++
++    fun onHomeUIEvents(homeUIEvents: HomeUIEvents) {
++        when (homeUIEvents) {
++            HomeUIEvents.ViewMoreClicked -> {}
++            is HomeUIEvents.ArticleClicked -> {}
++            is HomeUIEvents.CategoryChange -> {}
++            is HomeUIEvents.PreferencePanelToggle -> {}
++            is HomeUIEvents.OnHeadLineFavouriteChange -> {
++                viewModelScope.launch {
++                    val isFavourite = homeUIEvents.article.favourite
++                    val update = homeUIEvents.article.copy(
++                        favourite = !isFavourite
++                    )
++                    headlineUseCases.updateHeadlineFavouriteUseCase(
++                        update
++                    )
++                }
++            }
++        }
++    }
++
++}
+\ No newline at end of file
+Index: app/src/main/java/hoods/com/newsy/features_presentations/home/components/HeadlineItem.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/hoods/com/newsy/features_presentations/home/components/HeadlineItem.kt b/app/src/main/java/hoods/com/newsy/features_presentations/home/components/HeadlineItem.kt
+new file mode 100644
+--- /dev/null	(date 1696778678530)
++++ b/app/src/main/java/hoods/com/newsy/features_presentations/home/components/HeadlineItem.kt	(date 1696778678530)
+@@ -0,0 +1,227 @@
++package hoods.com.newsy.features_presentations.home.components
++
++import androidx.compose.animation.AnimatedContent
++import androidx.compose.foundation.ExperimentalFoundationApi
++import androidx.compose.foundation.interaction.collectIsDraggedAsState
++import androidx.compose.foundation.layout.Column
++import androidx.compose.foundation.layout.PaddingValues
++import androidx.compose.foundation.layout.Row
++import androidx.compose.foundation.layout.Spacer
++import androidx.compose.foundation.layout.fillMaxWidth
++import androidx.compose.foundation.layout.height
++import androidx.compose.foundation.layout.padding
++import androidx.compose.foundation.layout.size
++import androidx.compose.foundation.pager.HorizontalPager
++import androidx.compose.foundation.pager.PageSize
++import androidx.compose.foundation.pager.rememberPagerState
++import androidx.compose.material.icons.Icons
++import androidx.compose.material.icons.filled.Bookmark
++import androidx.compose.material.icons.filled.BookmarkAdded
++import androidx.compose.material3.Card
++import androidx.compose.material3.ExperimentalMaterial3Api
++import androidx.compose.material3.Icon
++import androidx.compose.material3.IconButton
++import androidx.compose.material3.MaterialTheme
++import androidx.compose.material3.Text
++import androidx.compose.material3.TextButton
++import androidx.compose.runtime.Composable
++import androidx.compose.runtime.LaunchedEffect
++import androidx.compose.runtime.getValue
++import androidx.compose.runtime.mutableStateOf
++import androidx.compose.runtime.remember
++import androidx.compose.runtime.setValue
++import androidx.compose.ui.Alignment
++import androidx.compose.ui.Modifier
++import androidx.compose.ui.layout.ContentScale
++import androidx.compose.ui.platform.LocalContext
++import androidx.compose.ui.res.painterResource
++import androidx.compose.ui.text.font.FontWeight
++import androidx.compose.ui.tooling.preview.Preview
++import androidx.compose.ui.unit.dp
++import coil.compose.AsyncImage
++import coil.request.ImageRequest
++import hoods.com.newsy.R
++import hoods.com.newsy.features_components.core.domain.models.NewsyArticle
++import hoods.com.newsy.features_presentations.core.components.defaultPadding
++import hoods.com.newsy.features_presentations.core.components.itemPadding
++import hoods.com.newsy.features_presentations.core.components.itemSpacing
++import hoods.com.newsy.features_presentations.core.ui.theme.NewsyTheme
++import hoods.com.newsy.utils.Utils
++import kotlinx.coroutines.delay
++
++@OptIn(ExperimentalFoundationApi::class)
++@Composable
++fun HeadlineItem(
++    articles: List<NewsyArticle>,
++    articleCount: Int,
++    onCardClick: (NewsyArticle) -> Unit,
++    onViewMoreClick: () -> Unit,
++    onFavouriteChange: (NewsyArticle) -> Unit,
++) {
++    var isAutoScrolling by remember {
++        mutableStateOf(true)
++    }
++
++    val pagerState = rememberPagerState(
++        initialPage = 0,
++        pageCount = { articleCount }
++    )
++    val isDragged by pagerState.interactionSource.collectIsDraggedAsState()
++
++    LaunchedEffect(key1 = pagerState.currentPage) {
++        if (isDragged) {
++            isAutoScrolling = false
++        } else {
++            isAutoScrolling = true
++            delay(5000)
++            with(pagerState) {
++                val target = if (currentPage < articleCount - 1) currentPage + 1 else 0
++                scrollToPage(target)
++            }
++        }
++    }
++
++    Column(
++        modifier = Modifier.fillMaxWidth(),
++    ) {
++        HorizontalPager(
++            state = pagerState,
++            contentPadding = PaddingValues(defaultPadding),
++            beyondBoundsPageCount = 0,
++            pageSize = PageSize.Fill,
++            pageSpacing = itemSpacing
++        ) { page ->
++            if (isAutoScrolling) {
++                AnimatedContent(
++                    targetState = page,
++                    label = ""
++                ) { index ->
++                    HeadlineCard(
++                        modifier = Modifier,
++                        article = articles[index],
++                        onCardClick = onCardClick,
++                        onFavouriteChange = onFavouriteChange
++                    )
++                }
++            } else {
++                HeadlineCard(
++                    modifier = Modifier,
++                    article = articles[page],
++                    onCardClick = onCardClick,
++                    onFavouriteChange = onFavouriteChange
++                )
++            }
++        }
++        Spacer(modifier = Modifier.size(2.dp))
++        TextButton(onClick = onViewMoreClick, modifier = Modifier.align(Alignment.End)) {
++            Text("view more")
++        }
++    }
++
++}
++
++@OptIn(ExperimentalMaterial3Api::class)
++@Composable
++private fun HeadlineCard(
++    modifier: Modifier = Modifier,
++    article: NewsyArticle,
++    onCardClick: (NewsyArticle) -> Unit,
++    onFavouriteChange: (NewsyArticle) -> Unit,
++) {
++    val imgRequest = ImageRequest.Builder(LocalContext.current)
++        .data(article.urlToImage)
++        .crossfade(true)
++        .build()
++    val favouriteIcon = if (article.favourite) Icons.Default.BookmarkAdded
++    else Icons.Default.Bookmark
++    Card(
++        onClick = { onCardClick(article) },
++        modifier = modifier
++    ) {
++        Column {
++            AsyncImage(
++                model = imgRequest,
++                placeholder = painterResource(R.drawable.ideogram_2_),
++                error = painterResource(R.drawable.ideogram_2_),
++                contentScale = ContentScale.Crop,
++                contentDescription = "news image",
++                modifier = Modifier.height(150.dp)
++            )
++
++            Text(
++                text = article.title,
++                style = MaterialTheme.typography.titleMedium,
++                maxLines = 2,
++                fontWeight = FontWeight.Bold,
++                modifier = Modifier.padding(itemPadding)
++            )
++
++            Row {
++                Column(
++                    modifier = Modifier.padding(itemPadding)
++                ) {
++                    Text(
++                        text = article.source,
++                        fontWeight = FontWeight.Bold,
++                        style = MaterialTheme.typography.bodyMedium
++                    )
++                    Text(
++                        text = Utils.formatPublishedAtDate(article.publishedAt),
++                        style = MaterialTheme.typography.bodySmall,
++                    )
++                }
++                IconButton(onClick = { onFavouriteChange(article) }) {
++                    Icon(
++                        imageVector = favouriteIcon,
++                        contentDescription = "favourite"
++                    )
++                }
++            }
++
++        }
++    }
++
++}
++
++@Preview(showSystemUi = true)
++@Composable
++fun PrevHeadlineItem() {
++    val article = listOf(
++        NewsyArticle(
++            author = "Rob Tornoe, Vinny Vella, Nick Vadala",
++            content = "",
++            description = "Authorities have sent an alert to residents in East Nantmeal Township to “stay vigilant” and lock doors as police search a new perimeter Monday night for Danelo Cavalcante.\"",
++            publishedAt = "2023-09-12T04:18:45Z",
++            source = "The Philadelphia Inquirer",
++            title = "Danelo Cavalcante prison escape: Updates, search area, Chester County sightings - The Philadelphia Inquirer",
++            url = "https://www.inquirer.com/news/pennsylvania/live/chester-county-prison-escape-danelo-cavalcante-manhunt-updates-20230911.html",
++            urlToImage = "https://www.inquirer.com/resizer/SADpRY2rJr1YKuLPVANlj6BKuRM=/760x507/smart/filters:format(webp)/cloudfront-us-east-1.images.arcpublishing.com/pmn/UJ6BBPGEU5GSJJJQWFUPO3M4QI.jpg",
++            id = 0,
++            category = "sports",
++            page = 0
++        ),
++        NewsyArticle(
++            author = "Rob Tornoe, Vinny Vella, Nick Vadala",
++            content = "",
++            description = "Authorities have sent an alert to residents in East Nantmeal Township to “stay vigilant” and lock doors as police search a new perimeter Monday night for Danelo Cavalcante.\"",
++            publishedAt = "2023-09-12T04:18:45Z",
++            source = "The Philadelphia Inquirer",
++            title = "Danelo Cavalcante prison escape: Updates, search area, Chester County sightings - The Philadelphia Inquirer",
++            url = "https://www.inquirer.com/news/pennsylvania/live/chester-county-prison-escape-danelo-cavalcante-manhunt-updates-20230911.html",
++            urlToImage = "https://www.inquirer.com/resizer/SADpRY2rJr1YKuLPVANlj6BKuRM=/760x507/smart/filters:format(webp)/cloudfront-us-east-1.images.arcpublishing.com/pmn/UJ6BBPGEU5GSJJJQWFUPO3M4QI.jpg",
++            id = 0,
++            category = "sports",
++            page = 0,
++            favourite = true
++        ),
++
++        )
++    NewsyTheme {
++        HeadlineItem(
++            article, 2, {}, {}, {}
++        )
++    }
++}
++
++
++
+Index: app/src/main/java/hoods/com/newsy/features_presentations/home/components/HomeTopAppBar.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/hoods/com/newsy/features_presentations/home/components/HomeTopAppBar.kt b/app/src/main/java/hoods/com/newsy/features_presentations/home/components/HomeTopAppBar.kt
+new file mode 100644
+--- /dev/null	(date 1696778678522)
++++ b/app/src/main/java/hoods/com/newsy/features_presentations/home/components/HomeTopAppBar.kt	(date 1696778678522)
+@@ -0,0 +1,78 @@
++package hoods.com.newsy.features_presentations.home.components
++
++import androidx.compose.foundation.Image
++import androidx.compose.foundation.layout.fillMaxWidth
++import androidx.compose.material.icons.Icons
++import androidx.compose.material.icons.filled.Search
++import androidx.compose.material3.CenterAlignedTopAppBar
++import androidx.compose.material3.ExperimentalMaterial3Api
++import androidx.compose.material3.Icon
++import androidx.compose.material3.IconButton
++import androidx.compose.material3.MaterialTheme
++import androidx.compose.material3.TopAppBarDefaults
++import androidx.compose.material3.TopAppBarScrollBehavior
++import androidx.compose.material3.TopAppBarState
++import androidx.compose.material3.rememberTopAppBarState
++import androidx.compose.runtime.Composable
++import androidx.compose.ui.Modifier
++import androidx.compose.ui.graphics.ColorFilter
++import androidx.compose.ui.layout.ContentScale
++import androidx.compose.ui.res.painterResource
++import androidx.compose.ui.tooling.preview.Preview
++import hoods.com.newsy.R
++import hoods.com.newsy.features_presentations.core.ui.theme.NewsyTheme
++
++@OptIn(ExperimentalMaterial3Api::class)
++@Composable
++fun HomeTopAppBar(
++    modifier: Modifier = Modifier,
++    openDrawer: () -> Unit,
++    onSearch: () -> Unit,
++    topAppBarState: TopAppBarState = rememberTopAppBarState(),
++    scrollBehaviour: TopAppBarScrollBehavior = TopAppBarDefaults
++        .enterAlwaysScrollBehavior(topAppBarState),
++) {
++    val title = "Newsy"
++    CenterAlignedTopAppBar(
++        title = {
++            Image(
++                painter = painterResource(R.drawable.ic_newsy_water_mark),
++                contentDescription = title,
++                contentScale = ContentScale.Inside,
++                colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.onBackground),
++                modifier = Modifier.fillMaxWidth()
++            )
++        },
++        navigationIcon = {
++            IconButton(onClick = openDrawer) {
++                Icon(
++                    painterResource(R.drawable.ic_newsy_logo),
++                    contentDescription = "navigation",
++                    tint = MaterialTheme.colorScheme.primary
++                )
++            }
++        },
++        actions = {
++            IconButton(onClick = onSearch) {
++                Icon(
++                    imageVector = Icons.Filled.Search,
++                    contentDescription = "navigation",
++                    tint = MaterialTheme.colorScheme.primary
++                )
++            }
++        }
++    )
++
++}
++
++@OptIn(ExperimentalMaterial3Api::class)
++@Preview(showBackground = true)
++@Composable
++fun PrevHomeTopAppBar() {
++    NewsyTheme {
++        HomeTopAppBar(
++            openDrawer = {},
++            onSearch = {},
++        )
++    }
++}
+\ No newline at end of file
+Index: app/src/main/java/hoods/com/newsy/features_presentations/home/HomeScreen.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/hoods/com/newsy/features_presentations/home/HomeScreen.kt b/app/src/main/java/hoods/com/newsy/features_presentations/home/HomeScreen.kt
+new file mode 100644
+--- /dev/null	(date 1696778678506)
++++ b/app/src/main/java/hoods/com/newsy/features_presentations/home/HomeScreen.kt	(date 1696778678506)
+@@ -0,0 +1,138 @@
++package hoods.com.newsy.features_presentations.home
++
++import androidx.compose.foundation.layout.Spacer
++import androidx.compose.foundation.layout.fillMaxWidth
++import androidx.compose.foundation.layout.size
++import androidx.compose.foundation.layout.wrapContentWidth
++import androidx.compose.foundation.lazy.LazyColumn
++import androidx.compose.foundation.lazy.LazyListScope
++import androidx.compose.material.icons.Icons
++import androidx.compose.material.icons.filled.LocalFireDepartment
++import androidx.compose.material3.CircularProgressIndicator
++import androidx.compose.material3.ExperimentalMaterial3Api
++import androidx.compose.material3.Scaffold
++import androidx.compose.material3.SnackbarHost
++import androidx.compose.material3.SnackbarHostState
++import androidx.compose.runtime.Composable
++import androidx.compose.runtime.remember
++import androidx.compose.runtime.rememberCoroutineScope
++import androidx.compose.ui.Alignment
++import androidx.compose.ui.Modifier
++import androidx.hilt.navigation.compose.hiltViewModel
++import androidx.paging.compose.LazyPagingItems
++import androidx.paging.compose.collectAsLazyPagingItems
++import hoods.com.newsy.features_components.core.domain.models.NewsyArticle
++import hoods.com.newsy.features_presentations.core.components.HeaderTitle
++import hoods.com.newsy.features_presentations.core.components.PaginationLoadingItem
++import hoods.com.newsy.features_presentations.core.components.itemSpacing
++import hoods.com.newsy.features_presentations.home.components.HeadlineItem
++import hoods.com.newsy.features_presentations.home.components.HomeTopAppBar
++import hoods.com.newsy.features_presentations.home.viewmodel.HomeUIEvents
++import hoods.com.newsy.features_presentations.home.viewmodel.HomeViewModel
++import hoods.com.newsy.utils.ArticleCategory
++import kotlinx.coroutines.CoroutineScope
++import kotlinx.coroutines.launch
++
++@OptIn(ExperimentalMaterial3Api::class)
++@Composable
++fun HomeScreen(
++    viewModel: HomeViewModel = hiltViewModel(),
++    onViewMoreClick: () -> Unit,
++    onHeadlineItemClick: (id: Int) -> Unit,
++    onSearchClick: () -> Unit,
++    openDrawer: () -> Unit,
++) {
++    val homeState = viewModel.homeState
++    val headlineArticles = homeState.headlineArticles.collectAsLazyPagingItems()
++    val categories = ArticleCategory.values()
++    val snackbarHostState = remember { SnackbarHostState() }
++    val scope = rememberCoroutineScope()
++    Scaffold(
++        snackbarHost = {
++            SnackbarHost(snackbarHostState)
++        },
++        topBar = {
++            HomeTopAppBar(
++                openDrawer = openDrawer,
++                onSearch = onSearchClick
++            )
++        }
++    ) { innerPadding ->
++        LazyColumn(
++            contentPadding = innerPadding
++        ) {
++            headlineItems(
++                headlineArticles = headlineArticles,
++                scope = scope,
++                snackbarHostState = snackbarHostState,
++                onViewMoreClick = onViewMoreClick,
++                onHeadlineItemClick = onHeadlineItemClick,
++                onFavouriteHeadlineChange = {
++                    viewModel.onHomeUIEvents(
++                        HomeUIEvents.OnHeadLineFavouriteChange(
++                            article = it
++                        )
++                    )
++                }
++            )
++        }
++    }
++}
++
++private fun LazyListScope.headlineItems(
++    headlineArticles: LazyPagingItems<NewsyArticle>,
++    scope: CoroutineScope,
++    snackbarHostState: SnackbarHostState,
++    onViewMoreClick: () -> Unit,
++    onHeadlineItemClick: (id: Int) -> Unit,
++    onFavouriteHeadlineChange: (NewsyArticle) -> Unit,
++) {
++    item {
++        HeaderTitle(
++            title = "Hot News",
++            icon = Icons.Default.LocalFireDepartment
++        )
++        Spacer(modifier = Modifier.size(itemSpacing))
++    }
++
++    item {
++        PaginationLoadingItem(
++            pagingState = headlineArticles.loadState.mediator?.refresh,
++            onError = { e ->
++                scope.launch {
++                    snackbarHostState.showSnackbar(
++                        message = e.message ?: "unknown error"
++                    )
++                }
++            },
++            onLoading = {
++                CircularProgressIndicator(
++                    modifier = Modifier.fillMaxWidth()
++                        .wrapContentWidth(align = Alignment.CenterHorizontally)
++                )
++            }
++        )
++    }
++
++    item {
++        val articleList = headlineArticles.itemSnapshotList.items
++        HeadlineItem(
++            articles = articleList,
++            articleCount = if (articleList.isEmpty()) 0 else articleList.lastIndex,
++            onCardClick = {
++                onHeadlineItemClick(it.id)
++            },
++            onViewMoreClick = onViewMoreClick,
++            onFavouriteChange = onFavouriteHeadlineChange
++        )
++    }
++}
++
++
++
++
++
++
++
++
++
+Index: app/src/main/java/hoods/com/newsy/utils/K.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/hoods/com/newsy/utils/K.kt b/app/src/main/java/hoods/com/newsy/utils/K.kt
+new file mode 100644
+--- /dev/null	(date 1696778678662)
++++ b/app/src/main/java/hoods/com/newsy/utils/K.kt	(date 1696778678662)
+@@ -0,0 +1,11 @@
++package hoods.com.newsy.utils
++
++object K {
++    const val API_KEY ="API_KEY"
++    const val PAGE_SIZE = 20
++    const val BASE_URL = "https://newsapi.org"
++    const val articleId = "articleId"
++    const val screenType = "screenType"
++    const val HEADLINE_CATEGORY = "headline"
++    const val SEARCH_CATEGORY = "search"
++}
+\ No newline at end of file
+Index: app/src/main/java/hoods/com/newsy/utils/ArticleCategory.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/hoods/com/newsy/utils/ArticleCategory.kt b/app/src/main/java/hoods/com/newsy/utils/ArticleCategory.kt
+new file mode 100644
+--- /dev/null	(date 1696778678650)
++++ b/app/src/main/java/hoods/com/newsy/utils/ArticleCategory.kt	(date 1696778678650)
+@@ -0,0 +1,11 @@
++package hoods.com.newsy.utils
++
++enum class ArticleCategory(val category:String) {
++    SPORTS("sports"),
++    TECHNOLOGY("technology"),
++    SCIENCE("science"),
++    HEALTHY("health"),
++    BUSINESS("business"),
++    ENTERTAINMENT("entertainment"),
++    GENERAL("general"),
++}
+\ No newline at end of file
+Index: app/src/main/java/hoods/com/newsy/utils/Utils.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/hoods/com/newsy/utils/Utils.kt b/app/src/main/java/hoods/com/newsy/utils/Utils.kt
+--- a/app/src/main/java/hoods/com/newsy/utils/Utils.kt	
++++ b/app/src/main/java/hoods/com/newsy/utils/Utils.kt	(date 1696778678666)
+@@ -1,8 +1,8 @@
+ package hoods.com.newsy.utils
+ 
+ import hoods.com.newsy.R
+-import hoods.com.newsy.models.Country
+-import hoods.com.newsy.models.Language
++import hoods.com.newsy.features_components.core.domain.models.Country
++import hoods.com.newsy.features_components.core.domain.models.Language
+ import java.text.SimpleDateFormat
+ import java.util.Locale
+ 
+Index: app/src/main/java/hoods/com/newsy/MainActivity.kt
+===================================================================
+diff --git a/app/src/main/java/hoods/com/newsy/MainActivity.kt b/app/src/main/java/hoods/com/newsy/MainActivity.kt
+deleted file mode 100644
+--- a/app/src/main/java/hoods/com/newsy/MainActivity.kt	
++++ /dev/null	
+@@ -1,46 +0,0 @@
+-package hoods.com.newsy
+-
+-import android.os.Bundle
+-import androidx.activity.ComponentActivity
+-import androidx.activity.compose.setContent
+-import androidx.compose.foundation.layout.fillMaxSize
+-import androidx.compose.material3.MaterialTheme
+-import androidx.compose.material3.Surface
+-import androidx.compose.material3.Text
+-import androidx.compose.runtime.Composable
+-import androidx.compose.ui.Modifier
+-import androidx.compose.ui.tooling.preview.Preview
+-import hoods.com.newsy.ui.theme.NewsyTheme
+-
+-class MainActivity : ComponentActivity() {
+-    override fun onCreate(savedInstanceState: Bundle?) {
+-        super.onCreate(savedInstanceState)
+-        setContent {
+-            NewsyTheme {
+-                // A surface container using the 'background' color from the theme
+-                Surface(
+-                    modifier = Modifier.fillMaxSize(),
+-                    color = MaterialTheme.colorScheme.background
+-                ) {
+-                    Greeting("Android")
+-                }
+-            }
+-        }
+-    }
+-}
+-
+-@Composable
+-fun Greeting(name: String, modifier: Modifier = Modifier) {
+-    Text(
+-        text = "Hello $name!",
+-        modifier = modifier
+-    )
+-}
+-
+-@Preview(showBackground = true)
+-@Composable
+-fun GreetingPreview() {
+-    NewsyTheme {
+-        Greeting("Android")
+-    }
+-}
+\ No newline at end of file
+Index: app/src/main/AndroidManifest.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/AndroidManifest.xml b/app/src/main/AndroidManifest.xml
+--- a/app/src/main/AndroidManifest.xml	
++++ b/app/src/main/AndroidManifest.xml	(date 1696778678074)
+@@ -2,7 +2,10 @@
+ <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+     xmlns:tools="http://schemas.android.com/tools">
+ 
++    <uses-permission android:name="android.permission.INTERNET" />
++
+     <application
++        android:name=".NewsyApplication"
+         android:allowBackup="true"
+         android:dataExtractionRules="@xml/data_extraction_rules"
+         android:fullBackupContent="@xml/backup_rules"
+@@ -13,7 +16,7 @@
+         android:theme="@style/Theme.Newsy"
+         tools:targetApi="31">
+         <activity
+-            android:name=".MainActivity"
++            android:name=".features_presentations.core.MainActivity"
+             android:exported="true"
+             android:label="@string/app_name"
+             android:theme="@style/Theme.Newsy">
+diff --git a/app/src/main/java/hoods/com/newsy/ui/theme/Type.kt b/app/src/main/java/hoods/com/newsy/ui/theme/Type.kt
+deleted file mode 100644
+diff --git a/app/src/main/java/hoods/com/newsy/ui/theme/Color.kt b/app/src/main/java/hoods/com/newsy/ui/theme/Color.kt
+deleted file mode 100644
+diff --git a/app/src/main/java/hoods/com/newsy/ui/theme/Theme.kt b/app/src/main/java/hoods/com/newsy/ui/theme/Theme.kt
+deleted file mode 100644
+diff --git a/app/src/main/java/hoods/com/newsy/models/Country.kt b/app/src/main/java/hoods/com/newsy/models/Country.kt
+deleted file mode 100644
+diff --git a/app/src/main/java/hoods/com/newsy/models/Language.kt b/app/src/main/java/hoods/com/newsy/models/Language.kt
+deleted file mode 100644

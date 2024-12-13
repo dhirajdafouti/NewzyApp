@@ -4,12 +4,10 @@ plugins {
     id("kotlinx-serialization")
     id("com.google.dagger.hilt.android")
     kotlin("kapt")
-    id("org.jlleitschuh.gradle.ktlint")
 }
 
 android {
     namespace = "hoods.com.newsy"
-    //noinspection GradleDependency
     compileSdk = 33
 
     defaultConfig {
@@ -19,13 +17,10 @@ android {
         versionCode = 1
         versionName = "1.0"
         compileSdkPreview = "UpsideDownCake"
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        testInstrumentationRunner = "hoods.com.newsy.HiltTestRunner"
         vectorDrawables {
             useSupportLibrary = true
         }
-    }
-    kotlinOptions {
-        jvmTarget = "11"
     }
 
     buildTypes {
@@ -33,68 +28,43 @@ android {
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro",
+                "proguard-rules.pro"
             )
+            resValue("string", "clear_text_config", "false")
         }
         debug {
             isMinifyEnabled = false
-            applicationIdSuffix = ".debug"
-            versionNameSuffix = "-debug"
+            resValue("string", "clear_text_config", "true")
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 
+    testOptions {
+        unitTests {
+            isIncludeAndroidResources = true
+        }
+    }
+
+    kotlinOptions {
+        jvmTarget = "17"
+    }
     buildFeatures {
         compose = true
-        buildConfig=true
     }
     composeOptions {
-        kotlinCompilerExtensionVersion = "1.4.3"
+        kotlinCompilerExtensionVersion = "1.5.1"
     }
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
-buildTypes{
-    buildTypes {
-        getByName("debug") {
-            buildConfigField("String", "BASE_URL", "https://newsapi.org/v2/")
-        }
-        getByName("release") {
-            buildConfigField("String", "BASE_URL", "https://newsapi.org/v2/")
-        }
-    }
 }
-    flavorDimensions.add("serverEnv")
-    flavorDimensions.add("localEnv")
 
-    productFlavors {
-        create("server") {
-            dimension = "serverEnv"
-            buildConfigField("String", "BASE_URL", "https://newsapi.org/v2/")
-        }
-        create("local") {
-            dimension = "localEnv"
-            buildConfigField("String", "BASE_URL", "https://newsapi.org/v2/")
-        }
-    }
-}
-//// Configure ktlint
-//ktlint {
-//    version.set("0.48.2") // Specify ktlint version (optional)
-//    android.set(true) // Enable Android Kotlin style
-//    verbose.set(true) // Enable verbose logging
-//    outputToConsole.set(true) // Output results to console
-//    ignoreFailures.set(false) // Fail the build on lint errors
-//    enableExperimentalRules.set(true) // Enable experimental rules
-//    disabledRules.set(setOf("no-wildcard-imports")) // Disable specific rules if needed
-//}
 dependencies {
-
     implementation("androidx.core:core-ktx:1.9.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.6.1")
     implementation("androidx.activity:activity-compose:1.7.2")
@@ -113,7 +83,29 @@ dependencies {
 
     implementation("com.google.android.material:material:1.9.0")
 
-    // compose
+    val roomVersion = "2.6.1"
+    val paging_version = "3.2.1"
+    //test
+    testImplementation("com.google.truth:truth:1.4.4")
+    androidTestImplementation("com.google.truth:truth:1.4.4")
+    testImplementation("androidx.room:room-testing:$roomVersion")
+    testImplementation("org.robolectric:robolectric:4.13")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0-RC.2")
+    androidTestImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0-RC.2")
+    testImplementation("androidx.paging:paging-testing:$paging_version")
+    testImplementation(platform("androidx.compose:compose-bom:2023.03.00"))
+    testImplementation("androidx.compose.ui:ui-test-junit4")
+    //mockWebServer
+    testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
+    androidTestImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
+    //mockito
+    testImplementation("org.mockito:mockito-core:5.12.0")
+    testImplementation("org.mockito.kotlin:mockito-kotlin:5.4.0")
+    androidTestImplementation("androidx.arch.core:core-testing:2.2.0")
+    testImplementation("androidx.arch.core:core-testing:2.2.0")
+
+
+    //compose
     val navVersion = "2.7.2"
     implementation("androidx.navigation:navigation-compose:$navVersion")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.6.2")
@@ -122,10 +114,14 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.6.2")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.6.2")
 
-    implementation("androidx.paging:paging-compose:3.2.1")
-    implementation("androidx.paging:paging-runtime-ktx:3.2.1")
 
-    // Coil
+    //Paging3
+
+    implementation("androidx.paging:paging-compose:$paging_version")
+    implementation("androidx.paging:paging-runtime-ktx:$paging_version")
+
+
+    //Coil
     implementation("io.coil-kt:coil-compose:2.1.0")
 
     // Network
@@ -134,22 +130,27 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp:4.9.0")
     implementation("com.squareup.okhttp3:logging-interceptor:4.9.0")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
-    implementation("com.squareup.retrofit2:converter-gson:2.9.0")
 
     // dagger Hilt
-    implementation("com.google.dagger:hilt-android:2.45")
-    kapt("com.google.dagger:hilt-android-compiler:2.45")
-
+    val hilt_version = "2.48"
+    implementation("com.google.dagger:hilt-android:$hilt_version")
+    kapt("com.google.dagger:hilt-android-compiler:$hilt_version")
     implementation("androidx.hilt:hilt-navigation-compose:1.0.0")
+    // For instrumented tests.
+    androidTestImplementation("com.google.dagger:hilt-android-testing:$hilt_version")
+    // ...with Kotlin.
+    kaptAndroidTest("com.google.dagger:hilt-android-compiler:$hilt_version")
 
-    val roomVersion = "2.5.2"
+
     implementation("androidx.room:room-runtime:$roomVersion")
     kapt("androidx.room:room-compiler:$roomVersion")
     implementation("androidx.room:room-ktx:$roomVersion")
     implementation("androidx.room:room-paging:$roomVersion")
 
-    // splash
+    //splash
     implementation("androidx.core:core-splashscreen:1.0.1")
+
+
 }
 // Allow references to generated code
 kapt {
