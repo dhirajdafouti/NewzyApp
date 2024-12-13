@@ -1,1 +1,1 @@
-This is the intial configuration branch
+The page will be updated soon
